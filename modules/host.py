@@ -9,7 +9,7 @@ from modules import credential
 
 col_name="host"
 
-class StructNew(BaseModel):
+class StructHostNew(BaseModel):
 	hostname: str
 	description: Optional[str] = None
 	ip_address: Optional[str] = None
@@ -49,7 +49,7 @@ def getByHostname(name: str):
 	log.write("found no host by hostname: " + name, "debug")
 	return False
 
-def create(host: StructNew):
+def create(host: StructHostNew):
 	log.write("create host: " + str(host), "debug")
 	col = db.db[col_name]
 	

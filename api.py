@@ -3,7 +3,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 
 app = FastAPI()
 
-from routers import secret, host, credential, target
+from routers import secret, host, credential, target, job, task
 # x_token: str = Header(...)
 async def get_token_header():
 	pass
@@ -17,26 +17,20 @@ async def get_root():
 
 #app.include_router(secret.router)
 
-app.include_router(
-	secret.router,
-	prefix="/secret",
-	tags=["secret"],dependencies=[Depends(get_token_header)],responses={404: {"description": "Not found"}},
-)
+app.include_router(secret.router,
+	prefix="/secret",tags=["secret"],dependencies=[Depends(get_token_header)],responses={404: {"description": "Not found"}})
 
-app.include_router(
-	host.router,
-	prefix="/host",
-	tags=["host"],dependencies=[Depends(get_token_header)],	responses={404: {"description": "Not found"}},
-)
+app.include_router(host.router,
+	prefix="/host",tags=["host"],dependencies=[Depends(get_token_header)],	responses={404: {"description": "Not found"}})
 
-app.include_router(
-	credential.router,
-	prefix="/credential",
-	tags=["credential"],dependencies=[Depends(get_token_header)],responses={404: {"description": "Not found"}},
-)
+app.include_router(credential.router,
+	prefix="/credential",tags=["credential"],dependencies=[Depends(get_token_header)],responses={404: {"description": "Not found"}})
 
-app.include_router(
-	target.router,
-	prefix="/target",
-	tags=["target"],dependencies=[Depends(get_token_header)],responses={404: {"description": "Not found"}},
-)
+app.include_router(target.router,
+	prefix="/target",tags=["target"],dependencies=[Depends(get_token_header)],responses={404: {"description": "Not found"}})
+
+app.include_router(job.router,
+	prefix="/job",tags=["job"],dependencies=[Depends(get_token_header)],responses={404: {"description": "Not found"}})
+
+app.include_router(task.router,
+	prefix="/task",tags=["task"],dependencies=[Depends(get_token_header)],responses={404: {"description": "Not found"}})

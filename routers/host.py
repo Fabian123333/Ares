@@ -14,7 +14,7 @@ async def getAll():
 		return json_util.dumps(hosts,default=json_util.default)
 
 @router.post("/", tags=["host"])
-async def create(data: host.StructNew):
+async def create(data: host.StructHostNew):
 	id = host.create(data)
 	
 	if id:

@@ -6,7 +6,7 @@ from core import log
 
 from modules import credential, target, host
 
-col_name="target"
+col_name="job"
 
 class StructJobNew(BaseModel):
 	name: str
@@ -14,8 +14,9 @@ class StructJobNew(BaseModel):
 	type: Optional[str] = "backup"
 	snapshots: Optional[int] = 14
 	interval: Optional[str] = "12h"
-	target_id: int 
-	hosts_id: {}
+	target_id: str 
+	host_ids: list
+	task_ids: list
 
 def getAll():
 	log.write("get all jobs", "debug")
@@ -56,18 +57,13 @@ def create(data: StructJobNew):
 	if(getByName(data.name)):
 		log.write("error job already exists: " + str(data), "debug")
 		return False
-	
-	for id in data.hosts_id:
-		if not host.exists(id):
-			log.write("error host does not exist: " + str(id), "debug")
-	
+
 	if not target.exists(data.target_id):
 		log.write("error target does not exist: " + str(data.target_id), "debug")
 	
 	log.write("create target setup: " + str(data))
-	
-	# doc = {"name": data.name, "description": data.description, "type": target.type, "snapshots": target.ip_address, "type": target.type, "credential_id": target.credential_id}
-	doc = data
+
+	doc = data.dict()
 	x = col.insert_one(doc)
 	
 	return True

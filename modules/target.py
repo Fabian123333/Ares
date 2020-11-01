@@ -17,7 +17,6 @@ class StructNew(BaseModel):
 	type: str # support ssh sftp rsync cifs
 	credential_id: str
 
-
 def getAll():
 	log.write("get all targets", "debug")
 	col = db.db[col_name]
