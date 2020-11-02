@@ -15,6 +15,11 @@ class StructTaskNew(BaseModel):
 	description: Optional[str] = None
 	data: list
 
+def get(id: str):
+	log.write("get task " + id, "debug")
+	ret = db.getByID(id, col_name)
+	return ret
+
 def getAll():
 	log.write("get all tasks", "debug")
 	col = db.db[col_name]

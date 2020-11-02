@@ -16,6 +16,11 @@ class StructNew(BaseModel):
 	description: Optional[str] = None
 	secret_id: str
 
+def get(id: str):
+	log.write("get credential " + id, "debug")
+	ret = db.getByID(id, col_name)
+	return ret
+
 def getAll():
 	get = db.db[col_name]
 	col = db.db[col_name]

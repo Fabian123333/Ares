@@ -5,7 +5,7 @@ from typing import Optional
 from core import db
 from core import log
 
-from modules import credential
+from modules import credential, secret
 
 col_name="target"
 
@@ -14,8 +14,26 @@ class StructNew(BaseModel):
 	fqdn: Optional[str] = None
 	description: Optional[str] = None
 	ip_address: Optional[str] = None
+	location: Optional[str] = ""
+	path: Optional[str] = "/ares"
 	type: str # support ssh sftp rsync cifs
 	credential_id: str
+
+def get(id: str):
+	log.write("get target " + id, "debug")
+	ret = db.getByID(id, col_name)
+	return ret
+
+def prepare(id: str):
+	target = get(id)
+	exec("from drivers.target_" + target["type"] + " import Target", globals())
+	t = Target(target)
+	
+	if("credential_id" in target):
+		cred = credential.get(target["credential_id"])
+		if "secret_id" in cred:
+			cred["secret"] = secret.getSecret(cred["secret_id"])
+		t.setCredential(cred)
 
 def getAll():
 	log.write("get all targets", "debug")

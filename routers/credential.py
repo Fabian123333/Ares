@@ -13,6 +13,14 @@ async def getCredentials():
 	else:
 		return json_util.dumps(credentials,default=json_util.default)
 
+@router.get("/{id}", tags=["credential"])
+async def get(id: str):
+	ret = credential.get(id)
+	if ( ret == False ):
+		raise HTTPException(status_code=404, detail="credential not found")
+	else:
+		return json_util.dumps(ret,default=json_util.default)
+
 @router.post("/", tags=["credential"])
 async def create(data: credential.StructNew):
 	id = credential.create(data)

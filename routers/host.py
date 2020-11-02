@@ -13,6 +13,14 @@ async def getAll():
 	else:
 		return json_util.dumps(hosts,default=json_util.default)
 
+@router.get("/{id}", tags=["host"])
+async def get(id: str):
+	ret = host.get(id)
+	if ( ret == False ):
+		raise HTTPException(status_code=404, detail="host not found")
+	else:
+		return json_util.dumps(ret,default=json_util.default)
+
 @router.post("/", tags=["host"])
 async def create(data: host.StructHostNew):
 	id = host.create(data)

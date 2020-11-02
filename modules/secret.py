@@ -21,6 +21,17 @@ class StructNew(BaseModel):
 	description: Optional[str] = None
 	secret: str
 
+def getSecret(id: str):
+	log.write("get secret value " + id, "debug")
+	ret = db.getByID(id, col_name)
+	return ret["secret"]
+
+
+def get(id: str):
+	log.write("get secret " + id, "debug")
+	ret = db.getByID(id, col_name)
+	return ret
+
 def getAll():
 	log.write("getAllSecrets", "debug")
 	col = db.db[col_name]

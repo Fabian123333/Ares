@@ -31,6 +31,10 @@ def get(id: str):
 	ret = db.getByID(id, col_name)
 	return ret
 
+def start(id):
+	db.setColumn(id, {"status":"started"}, col_name)
+	return True
+
 def getAll():
 	log.write("get all jobs", "debug")
 	col = db.db[col_name]

@@ -1,11 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional
 from time import sleep
-
 from core import db
 from core import log
 
-from config import worker as config
+from config import worker as conf
 from modules.worker import worker
 
 class main_loop():
@@ -13,7 +12,10 @@ class main_loop():
 		self.worker = worker()
 
 	def run(self):
+		log.write("start worker")
 		while True:
-			worker.
-			sleep(conf.interval)
-			
+			self.worker.runJob()
+			sleep(conf["interval"])
+
+loop = main_loop()
+loop.run()

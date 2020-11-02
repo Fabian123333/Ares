@@ -16,6 +16,10 @@ class StructHostNew(BaseModel):
 	type: Optional[str] = "linux" # support linux windows 
 	credential_id: str
 
+def get(id: str):
+	log.write("get host " + id, "debug")
+	ret = db.getByID(id, col_name)
+	return ret
 
 def getAll():
 	log.write("get all hosts", "debug")

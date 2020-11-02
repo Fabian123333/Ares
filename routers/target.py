@@ -13,6 +13,14 @@ async def getAll():
 	else:
 		return json_util.dumps(targets,default=json_util.default)
 
+@router.get("/{id}", tags=["target"])
+async def get(id: str):
+	ret = target.get(id)
+	if ( ret == False ):
+		raise HTTPException(status_code=404, detail="target not found")
+	else:
+		return json_util.dumps(ret,default=json_util.default)
+
 @router.post("/", tags=["target"])
 async def create(data: target.StructNew):
 
@@ -28,4 +36,4 @@ async def create(data: target.StructNew):
 		return {"state": "true"}
 	else:
 		raise HTTPException(status_code=422, detail="can't create credential")
-	
+

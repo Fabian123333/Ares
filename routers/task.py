@@ -12,6 +12,14 @@ async def getAll():
 	else:
 		return json_util.dumps(tasks,default=json_util.default)
 
+@router.get("/{id}", tags=["task"])
+async def get(id: str):
+	ret = task.get(id)
+	if ( ret == False ):
+		raise HTTPException(status_code=404, detail="task not found")
+	else:
+		return json_util.dumps(ret,default=json_util.default)
+
 @router.post("/", tags=["task"])
 async def create(data: task.StructTaskNew):
 
