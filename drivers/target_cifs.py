@@ -39,3 +39,33 @@ class Target():
 				self.fs.makedir(self.path)
 		else:
 			log.write("unsupported secret type", "error")
+
+	def fileExists(self, path):
+		abs_path = self.path + "/" + path
+		if(self.fs.exists(abs_path)):
+			return True
+		else:
+			return False
+	
+	def openFile(self, path)
+		if(self.fileExists(path))
+			log.write("cannot create backup, file exists: ".path)
+			return False
+		self.fh = self.fs.open(path, 'w')
+
+	def writeFile(self, data):
+		self.fh.write(data)
+
+	def closeFile(self)
+		self.fh.close()
+
+	def createDirectory(self, path):
+		abs_path = self.path + "/" + path
+		return self.fs.makedir(abs_path)
+
+	def createDirectoryRecursive(self, path):
+		rel_path = ""
+		for part in path.split("/"):
+			rel_path += "/" + part
+			if(not self.fileExists(rel_path)):
+				self.createDirectory(rel_path)

@@ -1,6 +1,11 @@
+import os
+
+from core import log
+import paramiko
+
 class Host():
-	def __init(self):
-		if("ip_address" in data):
+	def __init__(self, data):
+		if("ip_address" in data and data["ip_address"] != None):
 			log.write("connect to source using IP: " + data["ip_address"], "debug")
 			self.host = data["ip_address"]
 		elif("hostname" in data):
@@ -9,4 +14,44 @@ class Host():
 		else:
 			log.write("error no ip and hostname passed","error")
 			return False
-		return True
+
+		self.client = paramiko.SSHClient()
+		self.client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
+
+	def setCredential(self, data):
+		if(not "type" in data):
+			log.write("error no type specified for credentials", "error")
+			return False
+		
+		if(data["type"] == "certificate"):
+			log.write("deploy private key")
+			with open("/id_rsa", "w+") as fh:
+				fh.write(data["secret"])
+			
+			os.chmod("/id_rsa", 0o600)
+		
+		self.secret_type = data["type"]
+		
+		self.secret = data["secret"]
+		self.username = data["username"]
+
+	def connect(self):
+		if(self.secret_type == "password"):
+			self.client.connect(self.host, username=self.username, password=self.secret)
+		elif(self.secret_type == "certificate"):
+			self.client.connect(self.host, username=self.username, key_filename="/id_rsa")
+		else:
+			log.write("secret type not supported by host_linux: " + self.secret_type)
+			
+	def readBinary():
+		return self.client.recv(1024)
+
+	def createArchiveFromPaths(self, path):
+		cmd = "tar -Ocz "
+		
+		path = ""
+		for s in path:
+			path += s + "/ "
+		
+		cmd += path
+		self.client.send(cmd)

@@ -4,7 +4,9 @@ from typing import Optional
 from core import db
 from core import log
 
-from modules import job, host, target
+from modules import job, host, target, task
+
+from modules.backup import Backup
 
 class worker():
 	def __init__(self):
@@ -25,6 +27,13 @@ class worker():
 		for h_id in self.job["host_ids"]:
 			log.write("process host " + h_id , "notice")
 			h = host.prepare(h_id)
+			
+			for t_id in self.job["task_ids"]:
+				cur_task = task.get(t_id)
+				if(self.job["type"] == "backup"):
+					backup = Backup(self.job, h, t)
+					backup.run(cur_task)
+			
 
 	def runJob(self):
 		self.job = self.getJob()

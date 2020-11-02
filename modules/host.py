@@ -5,7 +5,7 @@ from typing import Optional
 from core import db
 from core import log
 
-from modules import credential
+from modules import credential, secret
 
 col_name="host"
 
@@ -22,15 +22,14 @@ def prepare(id: str):
 	
 	exec("from drivers.host_" + host["type"] + " import Host", globals())
 	h = Host(host)
-	#t = Target(target)
-	#
-	#if("credential_id" in target):
-	#	cred = credential.get(target["credential_id"])
-	#	if "secret_id" in cred:
-	#		cred["secret"] = secret.getSecret(cred["secret_id"])
-	#	t.setCredential(cred)
-	#t.connect()
-	#return t
+
+	if("credential_id" in host):
+		cred = credential.get(host["credential_id"])
+		if "secret_id" in cred:
+			cred["secret"] = secret.getSecret(cred["secret_id"])
+		h.setCredential(cred)
+	h.connect()
+	return h
 
 def get(id: str):
 	log.write("get host " + id, "debug")
