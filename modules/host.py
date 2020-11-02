@@ -16,6 +16,22 @@ class StructHostNew(BaseModel):
 	type: Optional[str] = "linux" # support linux windows 
 	credential_id: str
 
+def prepare(id: str):
+	host = get(id)
+	print(host)
+	
+	exec("from drivers.host_" + host["type"] + " import Host", globals())
+	h = Host(host)
+	#t = Target(target)
+	#
+	#if("credential_id" in target):
+	#	cred = credential.get(target["credential_id"])
+	#	if "secret_id" in cred:
+	#		cred["secret"] = secret.getSecret(cred["secret_id"])
+	#	t.setCredential(cred)
+	#t.connect()
+	#return t
+
 def get(id: str):
 	log.write("get host " + id, "debug")
 	ret = db.getByID(id, col_name)

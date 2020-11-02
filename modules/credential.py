@@ -11,7 +11,7 @@ col_name="credential"
 
 class StructNew(BaseModel):
 	name: str
-	type: Optional[str] = "password" # support key, token and password
+	type: Optional[str] = "password" # support key, token, none and password
 	username: Optional[str] = "root"
 	description: Optional[str] = None
 	secret_id: str

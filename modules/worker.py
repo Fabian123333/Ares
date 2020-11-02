@@ -20,10 +20,11 @@ class worker():
 	def execJob(self):
 		log.write("exec job " + self.id , "notice")
 		# job.start(self.job["_id"])
-		target.prepare(self.job["target_id"])
+		t = target.prepare(self.job["target_id"])
 
 		for h_id in self.job["host_ids"]:
 			log.write("process host " + h_id , "notice")
+			h = host.prepare(h_id)
 
 	def runJob(self):
 		self.job = self.getJob()

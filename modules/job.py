@@ -13,7 +13,7 @@ from modules import credential, target, host
 
 col_name="job"
 lock_interval = 1 # 1min
-lock_wait_time = 1 # seconds to wait to ensure integrity
+lock_wait_time = 0 # seconds to wait to ensure integrity
 
 class StructJobNew(BaseModel):
 	name: str

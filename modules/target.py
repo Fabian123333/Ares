@@ -34,6 +34,8 @@ def prepare(id: str):
 		if "secret_id" in cred:
 			cred["secret"] = secret.getSecret(cred["secret_id"])
 		t.setCredential(cred)
+	t.connect()
+	return t
 
 def getAll():
 	log.write("get all targets", "debug")
