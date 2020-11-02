@@ -23,19 +23,13 @@ def getAll():
 	ret = []
 	
 	for x in col.find():
-		print(x)
 		ret.append(x)
 
 	return ret
 
 def exists(id: str):
 	log.write("check if host exists: " + id, "debug")
-	col = db.db[col_name]
-	
-	if(col.count_documents({ '_id': ObjectId(id) }, limit = 1)):
-		return True
-	else:
-		return False
+	return db.exists(id, col_name)
 
 def getByHostname(name: str):
 	log.write("get host by hostname: " + name, "debug")

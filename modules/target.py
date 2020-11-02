@@ -23,7 +23,6 @@ def getAll():
 	ret = []
 	
 	for x in col.find():
-		print(x)
 		ret.append(x)
 
 	return ret

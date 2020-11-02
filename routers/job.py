@@ -1,4 +1,5 @@
 from bson import json_util
+from bson.json_util import dumps, loads
 from fastapi import APIRouter, HTTPException
 from modules import target, job, host, task
 
@@ -10,7 +11,34 @@ async def getAll():
 	if ( len(jobs) == 0 ):
 		raise HTTPException(status_code=404, detail="no jobs found")
 	else:
+		l = list(jobs)
+		d = dumps(l)
+		return d
+
+@router.get("/{job_id}", tags=["job"])
+async def apply(job_id: str):
+	ret = job.apply(job_id)
+	if ( ret == False ):
+		raise HTTPException(status_code=404, detail="job not found or already claimed")
+	else:
+		return {"worker": ret, "job": job_id}
+
+@router.get("/request/", tags=["job"])
+async def request():
+	jobs = job.request()
+	if ( jobs == False ):
+		raise HTTPException(status_code=404, detail="no jobs available")
+	else:
 		return json_util.dumps(jobs,default=json_util.default)
+
+@router.delete("/{job_id}", tags=["job"])
+async def delete(job_id: str):
+	ret = job.delete()
+	if ( ret == False ):
+		raise HTTPException(status_code=404, detail="job not found")
+	else:
+
+		return json_util.dumps(ret,default=json_util.default)	
 
 @router.post("/", tags=["job"])
 async def create(data: job.StructJobNew):
