@@ -54,7 +54,7 @@ class Backup():
 		
 		self.end_time = self.getTimestamp()
 		
-		doc = {"job_id": str(self.job["_id"]), "task_id": str(self.task["_id"]), "host_id": self.source.id, "hostname": self.source.hostname, "log": log.getBuffer(),"start_time": self.start_time, "end_time": self.end_time}
+		doc = {"job_id": str(self.job["_id"]), "file": self.getNewBackupPath(), "task_id": str(self.task["_id"]), "host_id": self.source.id, "hostname": self.source.hostname, "log": log.getBuffer(),"start_time": self.start_time, "end_time": self.end_time}
 		x = col.insert_one(doc)
 		return True
 		
