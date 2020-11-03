@@ -48,11 +48,21 @@ class Host():
 			log.write("secret type not supported by host_linux: " + self.secret_type)
 			
 	def readBinary(self):
-		data = self.channel.recv(1024)
+		data = self.channel.recv(8196)
 		if data:
 			return data
 		else:
 			return False
+
+	def read(self):
+		out = ""
+		while True:
+			data = self.channel.recv(1024)
+			if not data:
+				del self.channel
+				break
+			out += data
+		return out
 
 	def createArchiveFromPaths(self, path):
 		cmd = "tar -Ocz "
@@ -63,8 +73,38 @@ class Host():
 		
 		cmd += p
 		
-		log.write("execute command: " + cmd)
+		# log.write("execute command: " + cmd, "debug")
 		
 		self.transport = self.client.get_transport()
 		self.channel = self.transport.open_session()
 		self.channel.exec_command(cmd)
+
+# Optional Stuff if target supports docker
+
+	def getContainersByName(self, name):
+		cmd = 'docker ps -q --filter "name=' + name + '"'
+		
+		# log.write("execute command: " + cmd, "debug")
+		stdin, stdout, ssh_stderr = self.client.exec_command(cmd)
+
+		ids = str(stdout.read(), 'ascii').splitlines()
+		
+		return ids
+	
+	def createArchiveFromContainerId(self, id: str):
+		cmd = 'docker run --rm --volumes-from "' + id + '" debian bash -c \'mount | grep -vE "type (proc|cgroup|(tmp|sys)fs|mqueue|devpts)" | grep -vE "/etc/(resolv.conf|host(name|s))" | grep -v "overlay on /" | awk "{print ($3)}" | xargs tar -Ocz\''
+		
+		# log.write("execute command: " + cmd, "debug")
+		self.transport = self.client.get_transport()
+		self.channel = self.transport.open_session()
+		self.channel.exec_command(cmd)		
+	
+	def getContainersByStack(self, name):
+		cmd = "docker stack ps --no-trunc " + name + " |awk '$6 ~ \"Running\" {print $2}' | uniq"
+		
+		# log.write("execute command: " + cmd, "debug")
+		stdin, stdout, ssh_stderr = self.client.exec_command(cmd)
+		
+		names = str(stdout.read(), 'ascii').splitlines()
+
+		return names

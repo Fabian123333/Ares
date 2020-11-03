@@ -18,8 +18,7 @@ class StructHostNew(BaseModel):
 
 def prepare(id: str):
 	host = get(id)
-	print(host)
-	
+
 	exec("from drivers.host_" + host["type"] + " import Host", globals())
 	h = Host(host)
 

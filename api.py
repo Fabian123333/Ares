@@ -1,19 +1,14 @@
 from typing import Optional
 from fastapi import Depends, FastAPI, Header, HTTPException
 
+from routers import secret, host, credential, target, job, task
 app = FastAPI()
 
-from routers import secret, host, credential, target, job, task
 # x_token: str = Header(...)
 async def get_token_header():
 	pass
     #if x_token != "fake-super-secret-token":
     #    raise HTTPException(status_code=400, detail="X-Token header invalid")
-
-@app.get("/", tags=["api"])
-async def get_root():
-    return [{"server": "ares"}, {"status": "running"}]
-
 
 #app.include_router(secret.router)
 

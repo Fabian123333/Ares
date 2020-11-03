@@ -13,7 +13,19 @@ class StructTaskNew(BaseModel):
 	name: str
 	type: Optional[str] = "file" # support file, database, partition
 	description: Optional[str] = None
-	data: list
+	data: dict
+	
+	class Config:
+		schema_extra = {
+			"example": {
+				"name": "Docker Backup",
+				"type": "file",
+				"data": {
+					"container": ["dyndns_app"],
+					"stacks": ["ares", "fhem", "swarmpit", "unifi"]
+				}
+			}
+		}
 
 def get(id: str):
 	log.write("get task " + id, "debug")
