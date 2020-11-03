@@ -47,16 +47,18 @@ class Target():
 		else:
 			return False
 	
-	def openFile(self, path)
-		if(self.fileExists(path))
-			log.write("cannot create backup, file exists: ".path)
+	def openFile(self, path):
+		abs_path = self.path + "/" + path
+		log.write("open target file: "+abs_path, "debug")
+		if(self.fileExists(abs_path)):
+			log.write("cannot create backup, file exists: ".abs_path)
 			return False
-		self.fh = self.fs.open(path, 'w')
+		self.fh = self.fs.open(abs_path, 'wb')
 
 	def writeFile(self, data):
 		self.fh.write(data)
 
-	def closeFile(self)
+	def closeFile(self):
 		self.fh.close()
 
 	def createDirectory(self, path):

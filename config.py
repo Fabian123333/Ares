@@ -1,1 +1,1 @@
-worker = {"interval": 5} 
+worker = {"interval": 120} 

@@ -1,10 +1,16 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+import datetime
 
 client = MongoClient('mongodb://db:27017/')
 
 dbname="ares"
 db = client[dbname]
+
+def getTimestamp():
+	now = datetime.datetime.now()
+	ts = now.strftime('%Y-%m-%d %H:%M:%S')
+	return ts
 
 def exists(id, col_name):
 	col = db[col_name]

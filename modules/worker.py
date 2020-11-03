@@ -22,22 +22,25 @@ class worker():
 	def execJob(self):
 		log.write("exec job " + self.id , "notice")
 		# job.start(self.job["_id"])
-		t = target.prepare(self.job["target_id"])
 
 		for h_id in self.job["host_ids"]:
+			t = target.prepare(self.job["target_id"])
 			log.write("process host " + h_id , "notice")
 			h = host.prepare(h_id)
 			
 			for t_id in self.job["task_ids"]:
 				cur_task = task.get(t_id)
 				if(self.job["type"] == "backup"):
+					log.write("start task " + self.job["name"], "debug")
 					backup = Backup(self.job, h, t)
 					backup.run(cur_task)
-			
+
+		job.finish(str(self.job["_id"]))
 
 	def runJob(self):
 		self.job = self.getJob()
-		print(self.job)
+		if not self.job:
+			return False
 		if "name" in self.job:
 			id = str(self.job["_id"])
 			log.write("found job: " + id + " " + self.job["name"])

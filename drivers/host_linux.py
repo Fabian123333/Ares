@@ -2,6 +2,7 @@ import os
 
 from core import log
 import paramiko
+import select
 
 class Host():
 	def __init__(self, data):
@@ -14,6 +15,9 @@ class Host():
 		else:
 			log.write("error no ip and hostname passed","error")
 			return False
+
+		self.hostname = data["hostname"]
+		self.id = str(data["_id"])
 
 		self.client = paramiko.SSHClient()
 		self.client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
@@ -43,15 +47,24 @@ class Host():
 		else:
 			log.write("secret type not supported by host_linux: " + self.secret_type)
 			
-	def readBinary():
-		return self.client.recv(1024)
+	def readBinary(self):
+		data = self.channel.recv(1024)
+		if data:
+			return data
+		else:
+			return False
 
 	def createArchiveFromPaths(self, path):
 		cmd = "tar -Ocz "
 		
-		path = ""
+		p = ""
 		for s in path:
-			path += s + "/ "
+			p += s + "/ "
 		
-		cmd += path
-		self.client.send(cmd)
+		cmd += p
+		
+		log.write("execute command: " + cmd)
+		
+		self.transport = self.client.get_transport()
+		self.channel = self.transport.open_session()
+		self.channel.exec_command(cmd)

@@ -35,6 +35,10 @@ def start(id):
 	db.setColumn(id, {"status":"started"}, col_name)
 	return True
 
+def finish(id):
+	db.setColumn(id, {"status":"finished", "last_run": db.getTimestamp()}, col_name)
+	return True
+
 def getAll():
 	log.write("get all jobs", "debug")
 	col = db.db[col_name]
@@ -141,8 +145,8 @@ def request():
 	
 	for j in jobs:
 		if "last_run" in j:
-			next_run = datetime.strptime(j.last_run, '%Y-%m-%d %H:%M:%S') + timedelta(minutes=j.interval)
-			if datetime.now() > next_run:
+			next_run = datetime.datetime.strptime(j["last_run"], '%Y-%m-%d %H:%M:%S') + datetime.timedelta(minutes=j["interval"])
+			if datetime.datetime.now() > next_run:
 				log.write("found available job", "debug")
 				return j
 		else:
