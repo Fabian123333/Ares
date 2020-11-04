@@ -5,7 +5,7 @@ from typing import Optional
 from core import db
 from core import log
 
-from modules import credential, secret
+from modules.credential import Credential
 
 col_name="target"
 
@@ -30,9 +30,7 @@ def prepare(id: str):
 	t = Target(target)
 	
 	if("credential_id" in target):
-		cred = credential.get(target["credential_id"])
-		if "secret_id" in cred:
-			cred["secret"] = secret.getSecret(cred["secret_id"])
+		cred = Credential(target["credential_id"])
 		t.setCredential(cred)
 	t.connect()
 	return t

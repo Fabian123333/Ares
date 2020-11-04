@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from typing import Optional
 from modules import target, host, task
 
 from modules.job import Job
@@ -7,8 +8,8 @@ from modules.parser import parseJson, parseOutput
 router = APIRouter()
 
 @router.get("/", tags=["job"])
-async def getAll():
-	jobs = Job().getAll("json")
+async def getAll(filter: Optional[dict] = {}):
+	jobs = Job().getAll(filter=filter)
 	if ( len(jobs) == 0 ):
 		raise HTTPException(status_code=404, detail="no jobs found")
 	else:

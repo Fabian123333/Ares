@@ -167,9 +167,9 @@ class Job():
 		else:
 			return False
 		
-	def getAll(self, type="object"):
+	def getAll(self, filter={}, type="object"):
 		log.write("get all jobs", "debug")
-		docs = self.getDB().getCollection()
+		docs = self.getDB().getCollection(filter)
 		
 		if(type == "JSON"):
 			return docs

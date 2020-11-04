@@ -1,32 +1,36 @@
-from bson import json_util
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import ORJSONResponse
-from modules import host
+
+from typing import Optional
+
+from modules.parser import parseJson, parseOutput
+from modules.host import Host
 
 router = APIRouter()
 
 @router.get("/", tags=["host"])
-async def getAll():
-	hosts = host.getAll()
-	if ( len(hosts) == 0 ):
+async def getAll(filter: Optional[dict] = {}):
+	ret = Host().getAll(filter)
+		
+	if ( len(ret) == 0 ):
 		raise HTTPException(status_code=404, detail="no hosts found")
 	else:
-		return json_util.dumps(hosts,default=json_util.default)
+		return parseJson(ret)
 
 @router.get("/{id}", tags=["host"])
 async def get(id: str):
-	ret = host.get(id)
+	ret = Host(id)
 	if ( ret == False ):
 		raise HTTPException(status_code=404, detail="host not found")
 	else:
-		return json_util.dumps(ret,default=json_util.default)
+		return parseJson(ret)
 
 @router.post("/", tags=["host"])
-async def create(data: host.StructHostNew):
-	id = host.create(data)
+async def create(data: Host.StructNew):
+	ret = Host(data=data)
 	
-	if id:
+	if ret:
 		return {"state": "true"}
 	else:
-		raise HTTPException(status_code=422, detail="can't create credential")
+		raise HTTPException(status_code=422, detail="can't create host")
 	

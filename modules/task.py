@@ -76,7 +76,7 @@ class Task():
 	def create(self, data):
 		log.write("create task: " + str(data), "debug")
 	
-		if(Task(data.name).exists()):
+		if(Task(name=data.name).exists()):
 			log.write("error task already exists: " + str(data), "debug")
 			return False
 

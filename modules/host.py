@@ -1,81 +1,132 @@
+import json
+
 from bson.objectid import ObjectId
 from pydantic import BaseModel
 from typing import Optional
 
-from core import db
+from core.db import DB
 from core import log
 
-from modules import credential, secret
+from modules.credential import Credential
 
 col_name="host"
 
-class StructHostNew(BaseModel):
-	hostname: str
-	description: Optional[str] = None
-	ip_address: Optional[str] = None
-	type: Optional[str] = "linux" # support linux windows 
-	credential_id: str
+class Host():
+	col_name = "host"
 
-def prepare(id: str):
-	host = get(id)
+	class StructNew(BaseModel):
+		hostname: str
+		description: Optional[str] = None
+		ip_address: Optional[str] = None
+		type: Optional[str] = "linux" # support linux windows 
+		credential_id: str
 
-	exec("from drivers.host_" + host["type"] + " import Host", globals())
-	h = Host(host)
+	def __init__(self):
+		pass
 
-	if("credential_id" in host):
-		cred = credential.get(host["credential_id"])
-		if "secret_id" in cred:
-			cred["secret"] = secret.getSecret(cred["secret_id"])
-		h.setCredential(cred)
-	h.connect()
-	return h
-
-def get(id: str):
-	log.write("get host " + id, "debug")
-	ret = db.getByID(id, col_name)
-	return ret
-
-def getAll():
-	log.write("get all hosts", "debug")
-	col = db.db[col_name]
-	ret = []
-	
-	for x in col.find():
-		ret.append(x)
-
-	return ret
-
-def exists(id: str):
-	log.write("check if host exists: " + id, "debug")
-	return db.exists(id, col_name)
-
-def getByHostname(name: str):
-	log.write("get host by hostname: " + name, "debug")
-	col = db.db[col_name]
-	doc = col.find({"hostname": name})
-	
-	for d in doc:
-		log.write("found host by hostname: " + str(doc), "debug")
-		return d
-
-	log.write("found no host by hostname: " + name, "debug")
-	return False
-
-def create(host: StructHostNew):
-	log.write("create host: " + str(host), "debug")
-	col = db.db[col_name]
-	
-	if(getByHostname(host.hostname)):
-		log.write("error host already exists: " + str(host), "debug")
+	def getCredentialID(self):
+		if(hasattr(self, credential_id)):
+			return self.credential_id
 		return False
-	
-	if(not credential.exists(host.credential_id)):
-		log.write("error credential does not exist: " + str(host.credential_id), "debug")	
+
+	def getCredential():
+		id = self.getCredentialID()
+		if id:
+			return credential(self.getCredentialID())
 		return False
+
+	def getDB(self):
+		return DB(self.col_name)
+
+	def __init__(self, id=None, name=None, data=None):
+		if data == None:
+			if(name != None and id == None):
+				id = self.getIdByName()
+			if(id != None and id != False):
+				return self.get(id)
+		else:
+			if id == None:
+				return self.create(data)
+
+	def toJSON(self):	
+		return json.dumps(self, default=lambda o: o.__dict__, 
+			sort_keys=True, indent=4)
+
+	def getIdByName(self, id: str):
+		doc = self.getDB().findOne({"name": name})
+		
+		if not doc:
+			return False
 	
-	log.write("create host setup: " + str(host))
+		return str(doc["_id"])
+
+	def create(self, data):
+		log.write("create host: " + str(data), "debug")
 	
-	doc = {"hostname": host.hostname, "description": host.description, "ip_address": host.ip_address, "type": host.type, "credential_id": host.credential_id}
-	x = col.insert_one(doc)
+		if(Host(name=data.name).exists()):
+			log.write("error host already exists: " + str(data), "debug")
+			return False
+
+		log.write("create host: " + str(data))
 	
-	return True
+		doc = data.dict()
+		return self.getDB().addDoc(doc)
+
+	def getID(self):
+		if hasattr(self, "id"):
+			return self.id
+		else:
+			return False
+
+	def exists(self):
+		return self.exist
+
+	def getName(self):
+		if hasattr(self, "name"):
+			return self.name
+		return False
+
+	def get(self, id: str):
+		log.write("load host by id: " + id, "debug")
+		ret = self.getDB().get(id)
+		
+		if ret:
+			for k, v in ret.items():
+				setattr(self, k, v)
+			self.id = str(ret["_id"])
+			del(self._id)
+			self.exist = True
+		else: 
+			return False
+
+	def getAll(self, filter={}, type="object"):
+		log.write("get all hosts", "debug")
+		docs = self.getDB().getCollection(query=filter)
+		
+		if(type == "JSON"):
+			return docs
+		else:
+			ret = []
+			for d in docs:
+				r = Host(str(d["_id"]))
+				ret.append(r)
+			return ret
+
+	def getIDByHostname(self, hostname: str):
+		doc = self.getDB().findOne({"hostname": hostname})
+		
+		if not doc:
+			return False
+	
+		return str(doc["_id"])
+
+	def prepare(self):
+		exec("from drivers.host_" + host["type"] + " import HostTemplate", globals())
+		h = HostTemplate(host)
+	
+		cred = sel.fgetCredential()
+	
+		if(cred):
+			h.setCredential(cred)
+		h.connect()
+		return h

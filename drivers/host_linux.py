@@ -4,7 +4,7 @@ from core import log
 import paramiko
 import select
 
-class Host():
+class HostTemplate():
 	def __init__(self, data):
 		if("ip_address" in data and data["ip_address"] != None):
 			log.write("connect to source using IP: " + data["ip_address"], "debug")

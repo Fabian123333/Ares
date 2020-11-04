@@ -1,31 +1,34 @@
 from bson import json_util
 from fastapi import APIRouter, HTTPException
+from typing import Optional
 
-from modules import credential
+from modules.parser import parseJson, parseOutput
+from modules.credential import Credential
 
 router = APIRouter()
 
 @router.get("/", tags=["credential"])
-async def getCredentials():
-	credentials = credential.getAll()
-	if ( len(credentials) == 0 ):
+async def getAll(filter: Optional[dict] = {}):
+	ret = Credential().getAll(filter)
+		
+	if ( len(ret) == 0 ):
 		raise HTTPException(status_code=404, detail="no credentials found")
 	else:
-		return json_util.dumps(credentials,default=json_util.default)
+		return parseJson(ret)
 
 @router.get("/{id}", tags=["credential"])
 async def get(id: str):
-	ret = credential.get(id)
+	ret = Credential(id)
 	if ( ret == False ):
 		raise HTTPException(status_code=404, detail="credential not found")
 	else:
-		return json_util.dumps(ret,default=json_util.default)
+		return parseJson(ret)
 
 @router.post("/", tags=["credential"])
-async def create(data: credential.StructNew):
-	id = credential.create(data)
+async def create(data: Credential.StructNew):
+	ret = Credential(data=data)
 	
-	if id:
+	if ret:
 		return {"state": "true"}
 	else:
 		raise HTTPException(status_code=422, detail="can't create credential")

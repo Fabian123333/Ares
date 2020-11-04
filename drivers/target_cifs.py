@@ -17,18 +17,18 @@ class Target():
 		self.location = data["location"]
 		self.fs = None
 
-	def setCredential(self, data):
-		if(not "type" in data):
+	def setCredential(self, credential):
+		if(not credential.getType()):
 			log.write("error no type specified for credentials", "error")
 		
-		if(not data["type"] == "password"):
+		if(not credential.getType() == "password"):
 			log.write("error cifs only supports password auth", "error")
 			return False
 			
-		self.secret_type = data["type"]
+		self.secret_type = credential.getType()
 		
-		self.secret = data["secret"]
-		self.username = data["username"]
+		self.secret = credential.getSecret()
+		self.username = credential.getUsername()
 
 	def connect(self):
 		log.write("estabish connection", "debug")
