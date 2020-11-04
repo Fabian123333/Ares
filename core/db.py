@@ -11,6 +11,14 @@ client = MongoClient(conf["connection_string"])
 dbname="ares"
 db = client[dbname]
 
+def parseJson(out):
+	if type(out) == list:
+		ret = []
+		for o in out:
+			ret.append(json.loads(o.toJSON()))
+	else:
+		ret = out.toJSON()
+	return json.loads(json_util.dumps(ret,default=json_util.default))
 
 def parseOutput(out):
 	if "_id" in out:
@@ -34,7 +42,29 @@ def parseOutput(out):
 			out.append(j)
 	
 	return json.loads(json_util.dumps(out,default=json_util.default))
+
+def findOne(pattern, col_name):
+	col = db[col_name]
+	doc = col.find_one(pattern)
+
+	return doc
+
+def getCol(col_name):
+	col = db[col_name]
+	ret = []
 	
+	for x in col.find():
+		ret.append(x)
+
+	return ret
+
+def addDoc(doc, col_name):
+	col = db[col_name]
+	x = col.insert_one(doc)
+	if x:
+		return True
+	else:
+		return False
 
 def getTimestamp():
 	now = datetime.datetime.now()

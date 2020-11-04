@@ -4,7 +4,9 @@ from typing import Optional
 from core import db
 from core import log
 
-from modules import job, host, target, task
+from modules import host, target, task
+
+from modules.job import Job
 
 from modules.backup import Backup
 
@@ -13,41 +15,39 @@ class worker():
 		log.write("init worker", "debug")
 		self.uuid:str = None
 
-	def getJob(self):
-		return job.request()
-
 	def prepareSource(self):
 		pass
 
-	def execJob(self):
-		log.write("exec job " + self.id , "notice")
-		# job.start(self.job["_id"])
-		t = target.prepare(self.job["target_id"])
+	def execJob(self, job):
+		log.write("exec job " + job.id , "notice")
+		# job.setStatus("started")
+		t = target.prepare(job.getTarget())
 
-		for h_id in self.job["host_ids"]:
+		for h_id in job.getHosts():
 			log.write("process host " + h_id , "notice")
 			h = host.prepare(h_id)
 			
-			for t_id in self.job["task_ids"]:
+			for t_id in job.getTasks():
 				cur_task = task.get(t_id)
-				if(self.job["type"] == "backup"):
-					log.write("start task " + self.job["name"], "debug")
-					backup = Backup(self.job, h, t)
+				if(job.getType() == "backup"):
+					log.write("start task " + job.getName(), "debug")
+					backup = Backup(job, h, t)
 					backup.run(cur_task)
 
-		job.finish(str(self.job["_id"]))
+		# job.finish(str(self.job["_id"]))
 
 	def runJob(self):
-		self.job = self.getJob()
-		if not self.job:
+		job = Job().request()
+		
+		if not job:
 			return False
-		if "name" in self.job:
-			id = str(self.job["_id"])
-			log.write("found job: " + id + " " + self.job["name"])
-			worker_id = job.apply(id)
-			if not worker_id:
-				return False
-			
-			log.write("apply as worker " + worker_id, "notice")
-			self.id = worker_id
-			return self.execJob()
+
+		log.write("found job: " + job.getID() + " " + job.getName(), "notice")
+
+
+		ret = job.apply()
+		if ret == False:
+			log.write("error apply as worker " + job.getWorker(), "notice")
+		else:
+			log.write("apply as worker " + job.getWorker(), "notice")
+			return self.execJob(job)

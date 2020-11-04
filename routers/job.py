@@ -1,38 +1,40 @@
 from bson import json_util
 from bson.json_util import dumps, loads
 from fastapi import APIRouter, HTTPException
-from modules import target, job, host, task
-from core.db import parseOutput
+from modules import target, host, task
+from core.db import parseOutput, parseJson
+
+from modules.job import Job
 
 router = APIRouter()
 
 @router.get("/", tags=["job"])
 async def getAll():
-	jobs = job.getAll()
+	jobs = Job().getAll("json")
 	if ( len(jobs) == 0 ):
 		raise HTTPException(status_code=404, detail="no jobs found")
 	else:
-		return parseOutput(jobs)
+		return parseJson(jobs)
 
 @router.get("/{job_id}", tags=["job"])
-async def apply(job_id: str):
-	ret = job.apply(job_id)
+async def apply(id: str):
+	ret = Job(id).apply()
 	if ( ret == False ):
 		raise HTTPException(status_code=404, detail="job not found or already claimed")
 	else:
-		return {"worker": ret, "job": job_id}
+		return {"worker": ret, "job": id}
 
 @router.get("/request/", tags=["job"])
 async def request():
-	jobs = job.request()
+	jobs = Job().request()
 	if ( jobs == False ):
 		raise HTTPException(status_code=404, detail="no jobs available")
 	else:
-		return parseOutput(jobs)
+		return parseJson(jobs)
 
-@router.delete("/{job_id}", tags=["job"])
-async def delete(job_id: str):
-	ret = job.delete()
+@router.delete("/{id}", tags=["job"])
+async def delete(id: str):
+	ret = Job(id).delete()
 	if ( ret == False ):
 		raise HTTPException(status_code=404, detail="job not found")
 	else:
@@ -40,9 +42,9 @@ async def delete(job_id: str):
 		return parseOutput(ret)
 
 @router.post("/", tags=["job"])
-async def create(data: job.StructJobNew):
+async def create(data: Job.StructNew):
 
-	if(job.getByName(data.name)):
+	if(Job(name=data.name).exists()):
 		raise HTTPException(status_code=422, detail="job already exist")
 
 	for id in data.host_ids:
@@ -57,10 +59,10 @@ async def create(data: job.StructJobNew):
 
 	if not target.exists(data.target_id):
 		raise HTTPException(status_code=422, detail="target does not exist")
-	
-	id = job.create(data)
 
-	if id:
+	j = job.create(data=data)
+
+	if j.getId():
 		return {"state": "true"}
 	else:
 		raise HTTPException(status_code=422, detail="can't create target")

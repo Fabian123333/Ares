@@ -1,6 +1,7 @@
 import datetime
 import uuid
 import time
+import json
 
 from pydantic import BaseModel
 from typing import Optional
@@ -15,142 +16,222 @@ col_name="job"
 lock_interval = 1 # 1min
 lock_wait_time = 0 # seconds to wait to ensure integrity
 
-class StructJobNew(BaseModel):
-	name: str
-	description: Optional[str] = None
-	type: Optional[str] = "backup"
-	snapshots: Optional[int] = 14
-	interval: Optional[int] = 720 # interval in minutes
-	target_id: str 
-	host_ids: list
-	task_ids: list
+class Job():
+	col_name = "job"
+	lock_wait_time = 0 # sec to ensure lock
+	lock_interval = 1 # 1min
+	exist = False
 
-# get single job
-def get(id: str):
-	log.write("get job " + id, "debug")
-	ret = db.getByID(id, col_name)
-	return ret
+	class StructNew(BaseModel):
+		name: str
+		description: Optional[str] = None
+		type: Optional[str] = "backup"
+		snapshots: Optional[int] = 14
+		interval: Optional[int] = 720 # interval in minutes
+		target_id: str 
+		host_ids: list
+		task_ids: list
 
-def start(id):
-	db.setColumn(id, {"status":"started"}, col_name)
-	return True
-
-def finish(id):
-	db.setColumn(id, {"status":"finished", "last_run": db.getTimestamp()}, col_name)
-	return True
-
-def getAll():
-	log.write("get all jobs", "debug")
-	col = db.db[col_name]
-	ret = []
-	
-	for x in col.find():
-		ret.append(x)
-
-	return ret
-
-def getByName(name: str):
-	log.write("get job by name: " + name, "debug")
-	col = db.db[col_name]
-	doc = col.find({"name": name})
-	
-	for d in doc:
-		log.write("found job by name: " + str(doc), "debug")
-		return d
-
-	log.write("found no job by name: " + name, "debug")
-	return False
-
-def getWorker(id: str):
-	if(not col.count_documents({ '_id': ObjectId(id) }, limit = 1)):
-		return False
-	db.getValueByName(id, "worker", col_name)
-
-
-def exists(id: str):
-	log.write("check if job exists: " + id, "debug")
-	col = db.db[col_name]
-	
-	if(col.count_documents({ '_id': ObjectId(id) }, limit = 1)):
-		return True
-	else:
-		return False
-
-def create(data: StructJobNew):
-	log.write("create job: " + str(data), "debug")
-	col = db.db[col_name]
-	
-	if(getByName(data.name)):
-		log.write("error job already exists: " + str(data), "debug")
-		return False
-
-	if not target.exists(data.target_id):
-		log.write("error target does not exist: " + str(data.target_id), "debug")
-	
-	log.write("create target setup: " + str(data))
-
-	doc = data.dict()
-	x = col.insert_one(doc)
-	
-	return True
-
-def isLocked(job_id):
-	j = get(job_id)
-	
-	if "lock_time" in j and not "worker" in j:
-		lock_expire = datetime.strptime(j.lock_time, '%Y-%m-%d %H:%M:%S') + timedelta(minutes=lock_interval)
-	
-		if datetime.datetime.now() > lock_expire:
-			return True
-	return False
-
-
-def apply(job_id):
-	log.write("apply for job " + job_id, "debug")
-	if(not exists(job_id)):
-		return False
-
-	if(isLocked(job_id)):
-		return False
-
-	log.write("start locking " + job_id, "debug")
-
-	worker=str(uuid.uuid1())
-
-	if(lock(job_id, worker)):
-		time.sleep(lock_wait_time)
-		if(getValueByName(job_id, "worker") == worker):
-			log.write("successfully assigned " + job_id + " to " + worker, "debug")
-			return worker
-
-	return False
-
-def getValueByName(job_id, worker):
-	return db.getValueByName(job_id, worker, col_name)
-
-def lock(job_id, worker):
-	now = datetime.datetime.now()
-	lock_time = now.strftime('%Y-%m-%d %H:%M:%S')
-	db.setColumn(job_id, {"lock_time":lock_time,"worker":worker}, col_name)
-	return True
-
-def delete(job_id):
-	log.write("delete job " + job_id, "debug")
-	return db.deleteById(job_id, col)
-
-def request():
-	log.write("check available job", "debug")
-	jobs = getAll()
-	
-	
-	for j in jobs:
-		if "last_run" in j:
-			next_run = datetime.datetime.strptime(j["last_run"], '%Y-%m-%d %H:%M:%S') + datetime.timedelta(minutes=j["interval"])
-			if datetime.datetime.now() > next_run:
-				log.write("found available job", "debug")
-				return j
+	def __init__(self, id=None, name=None, data=None):
+		if data == None:
+			if(name != None and id == None):
+				id = getIdByName()
+			if(id != None and id != False):
+				return self.get(id)
 		else:
-			log.write("found available job", "debug")
-			return j
+			if id == None:
+				return self.create(data)
 
-	return False
+	def toJSON(self):	
+		return json.dumps(self, default=lambda o: o.__dict__, 
+			sort_keys=True, indent=4)
+
+	def getTarget(self):
+		if hasattr(self, "target_id"):
+			return self.target_id
+		else:
+			return False
+
+	def getHosts(self):
+		if hasattr(self, "host_ids"):
+			return self.host_ids
+		else:
+			return False
+			
+	def getTasks(self):
+		if hasattr(self, "task_ids"):
+			return self.task_ids
+		else:
+			return False
+			
+	def getType(self):
+		if hasattr(self, "type"):
+			return self.type
+		else:
+			return False
+
+	def setType(self, val: str):
+		if db.setColumn(self.id, {"type":val}, self.col_name):
+			self.type = val
+			return True
+		else:
+			return False
+
+
+	def create(self, data):
+		log.write("create job: " + str(data), "debug")
+	
+		if(Job(data["name"])):
+			log.write("error job already exists: " + str(data), "debug")
+			return False
+
+		if not target.exists(data.target_id):
+			log.write("error target does not exist: " + str(data.target_id), "debug")
+	
+		log.write("create target setup: " + str(data))
+
+		doc = data.dict()
+		if db.addDoc(doc, self.col_name):
+			return True
+		else:
+			return False
+
+	def delete(self):
+		log.write("delete job " + self.id, "debug")
+		return db.deleteById(job_id, self.col_name)
+
+	def exists(self):
+		return self.exist
+
+	def get(self, id: str):
+		log.write("load job by id: " + id, "debug")
+		ret = db.getByID(id, self.col_name)
+		
+		if ret:
+			for k, v in ret.items():
+				setattr(self, k, v)
+			self.id = str(ret["_id"])
+			del(self._id)
+			self.exist = True
+		else: 
+			return False
+
+	def getIdByName(self, id: str):
+		doc = db.findOne({"name": name})
+		
+		if not doc:
+			return False
+	
+		return str(doc["_id"])
+
+	def getID(self):
+		if hasattr(self, "id"):
+			return self.id
+		else:
+			return False
+
+	def setStatus(self, status: str):
+		if db.setColumn(self.id, {"status":status}, self.col_name):
+			self.status = status
+			return True
+		else:
+			return False
+
+	def getStatus(self):
+		if hasattr(self, "status"):
+			return self.status
+		else:
+			return False
+
+	def setLastRun(self):
+		now = db.getTimestamp()
+		db.setColumn(self.id, 
+			{"status":"finished", "last_run": now}, self.col_name)
+		self.last_run = now
+		return True
+
+	def getLastRun(self):
+		if hasattr(self, "last_run"):
+			return self.last_run
+		else:
+			return False
+
+	def getNextRun(self):
+		if hasattr(self, "last_run"):
+			return datetime.datetime.strptime(self.getLastRun(), '%Y-%m-%d %H:%M:%S') + datetime.timedelta(minutes=self.interval)
+		else:
+			return datetime.datetime.now()
+
+	def getName(self):
+		if hasattr(self, "name"):
+			return self.name
+		else:
+			return False
+		
+	def getAll(self, type="object"):
+		log.write("get all jobs", "debug")
+		doc = db.getCol(self.col_name)
+		
+		if(type == "JSON"):
+			return doc
+		else:
+			ret = []
+			for d in doc:
+				c_job = Job(str(d["_id"]))
+				ret.append(c_job)
+			return ret
+
+	def getWorker(self):
+		if hasattr(self, "worker"):
+			return self.worker
+		else:
+			return False
+
+	def setWorker(self, id: str):
+		if db.setColumn(self.id, {"worker":id}, self.col_name):
+			self.worker = id
+			return True
+
+	def lock(self, worker):
+		now = datetime.datetime.now()
+		self.lock_time = now.strftime('%Y-%m-%d %H:%M:%S')
+		db.setColumn(self.id, {"lock_time":self.lock_time,"worker":worker}, self.col_name)
+		self.worker = worker
+		return True
+
+	def isLocked(self):
+		if hasattr(self, "lock_time") and not hasattr(self, "worker"):
+			lock_expire = datetime.strptime(self.lock_time, '%Y-%m-%d %H:%M:%S') + timedelta(minutes=self.lock_interval)
+			
+			if datetime.datetime.now() > lock_expire:
+				return True
+		return False
+
+	def apply(self):
+		log.write("apply for job " + self.id, "debug")
+		if(not self.exists()):
+			return False
+	
+		if(self.isLocked()):
+			return False
+	
+		log.write("start locking " + self.id, "debug")
+	
+		worker=str(uuid.uuid1())
+	
+		if(self.lock(worker)):
+			time.sleep(self.lock_wait_time)
+			if(self.getWorker() == self.worker):
+				log.write("successfully assigned " + self.id + " to " + self.worker, "debug")
+				return True
+		return False
+
+	def request(self):
+		jobs = self.getAll()
+		for job in jobs:
+			if datetime.datetime.now() > job.getNextRun():
+				log.write("found available job: " + job.getID(), "debug")
+				return job
+				
+		log.write("found no jobs", "debug")
+		return False

@@ -12,6 +12,7 @@ class Backup():
 		self.job = job
 		self.source = source
 		self.target = target
+		self.filename = ""
 
 	def getTimestamp(self):
 		now = datetime.datetime.now()
@@ -36,25 +37,9 @@ class Backup():
 
 		if(task["type"] == "file"):
 			log.write("init file backup", "notice")
-			filename = self.getNewBackupPath()
+			self.filename = self.getNewBackupPath()
 			
-			if(not self.target.fileExists(self.getBackupRoot())):
-				log.write("backup root does not exist. creating: " + self.getBackupRoot())
-				self.target.createDirectoryRecursive(self.getBackupRoot())
-			
-			self.target.openFile(filename)
-			self.source.createArchiveFromPaths(task["data"])
-						
-			while True:
-				data = self.source.readBinary()
-				if not data:
-					break
-				self.target.writeFile(data)
-			
-			log.write("finish backup")
-			
-			self.target.closeFile()
-			self.complete()
+			self.backupFile()
 			
 			return True
 
@@ -70,8 +55,8 @@ class Backup():
 						log.write("no matching containers found", "debug")
 					else:
 						for id in c_ids:
-							filename = self.getContainerBackupPath(container)
-							self.backupDockerContainer(id, filename)
+							self.filename = self.getContainerBackupPath(container)
+							self.backupDockerContainer(id, container)
 
 			if "stacks" in task["data"]:
 				for stack in task["data"]["stacks"]:			
@@ -83,14 +68,34 @@ class Backup():
 						for container in c_names:
 							filename = self.getStackBackupPath(stack, container)
 							for id in self.source.getContainersByName(container):
-								self.backupDockerContainer(id, filename)
+								self.backupDockerContainer(id, container, stack)
 
 			# self.target.openFile(filename)
 		else:
 			log.write("error unsupported task type: " + task["type"])
 
-	def backupDockerContainer(self, id, filename):
-		log.write("start backup of container %s to %s" % (id, filename))
+	def backupFile(self):
+		if(not self.target.fileExists(self.getBackupRoot())):
+			log.write("backup root does not exist. creating: " + self.getBackupRoot())
+			self.target.createDirectoryRecursive(self.getBackupRoot())
+			
+		self.target.openFile(self.filename)
+		self.source.createArchiveFromPaths(self.task["data"])
+						
+		while True:
+			data = self.source.readBinary()
+			if not data:
+				break
+			self.target.writeFile(data)
+			
+		log.write("finish backup")
+
+		self.addBackupEntry()
+		self.target.closeFile()
+
+
+	def backupDockerContainer(self, id, container, stack=None):
+		log.write("start backup of container %s to %s" % (id, self.filename))
 
 		if not self.target.fileExists(os.path.dirname(filename)):
 			log.write("backup root does not exist. creating: " + os.path.dirname(filename))
@@ -109,18 +114,26 @@ class Backup():
 
 		log.write("finish backup of container %s" % (id))
 		
+		log = {"container": container}
+		if not stack == None:
+			log += {"stack": stack}
+		
+		self.addBackupEntry(log)
 		return True		
 
-
-	def complete(self):
+	def addBackupEntry(self, data={}):
 		log.write("mark backup as compeleted", "debug")
-		col = db.db[col_name]
 		
 		self.end_time = self.getTimestamp()
 		
-		doc = {"job_id": str(self.job["_id"]), "file": self.getNewBackupPath(), "task_id": str(self.task["_id"]), "host_id": self.source.id, "hostname": self.source.hostname, "log": log.getBuffer(),"start_time": self.start_time, "end_time": self.end_time}
-		x = col.insert_one(doc)
-		return True
+		doc = {"job_id": str(self.job["_id"]), 
+				"file": self.filename, 
+				"task_id": str(self.task["_id"]), 
+				"host_id": self.source.id, 
+				"type": self.task["type"],
+				"hostname": self.source.hostname, "log": log.getBuffer(),"start_time": self.start_time, "end_time": self.end_time}
+		
+		db.addDoc(doc, col_name)
 	
 	def getBackupRootShort(self):
 		return "/backup/" + str(self.job["_id"]) + "/" + str(self.task["_id"]) + "/"
