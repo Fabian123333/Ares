@@ -1,10 +1,8 @@
-from bson import json_util
-from bson.json_util import dumps, loads
 from fastapi import APIRouter, HTTPException
 from modules import target, host, task
-from core.db import parseOutput, parseJson
 
 from modules.job import Job
+from modules.parser import parseJson, parseOutput
 
 router = APIRouter()
 

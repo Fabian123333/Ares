@@ -1,2 +1,7 @@
 worker = {"interval": 120} 
-mongodb = {"connection_string": "mongodb://db:27017/"}
+
+
+mongodb = {
+	"url": "mongodb://db:27017/",
+	"db": "ares"
+}

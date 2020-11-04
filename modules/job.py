@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import Optional
 from bson.objectid import ObjectId
 
-from core import db
+from core.db import DB
 from core import log
 
 from modules import credential, target, host
@@ -32,7 +32,11 @@ class Job():
 		host_ids: list
 		task_ids: list
 
+	def getDB(self):
+		return DB("job")
+
 	def __init__(self, id=None, name=None, data=None):
+
 		if data == None:
 			if(name != None and id == None):
 				id = getIdByName()
@@ -71,12 +75,11 @@ class Job():
 			return False
 
 	def setType(self, val: str):
-		if db.setColumn(self.id, {"type":val}, self.col_name):
+		if self.getDB().updateDocByID(self.id, {"type":val}):
 			self.type = val
 			return True
 		else:
 			return False
-
 
 	def create(self, data):
 		log.write("create job: " + str(data), "debug")
@@ -91,21 +94,21 @@ class Job():
 		log.write("create target setup: " + str(data))
 
 		doc = data.dict()
-		if db.addDoc(doc, self.col_name):
+		if self.getDB().addDoc(doc):
 			return True
 		else:
 			return False
 
 	def delete(self):
 		log.write("delete job " + self.id, "debug")
-		return db.deleteById(job_id, self.col_name)
+		return self.getDB().deleteById(job_id)
 
 	def exists(self):
 		return self.exist
 
 	def get(self, id: str):
 		log.write("load job by id: " + id, "debug")
-		ret = db.getByID(id, self.col_name)
+		ret = self.getDB().get(id)
 		
 		if ret:
 			for k, v in ret.items():
@@ -117,7 +120,7 @@ class Job():
 			return False
 
 	def getIdByName(self, id: str):
-		doc = db.findOne({"name": name})
+		doc = self.getDB().findOne({"name": name})
 		
 		if not doc:
 			return False
@@ -131,7 +134,7 @@ class Job():
 			return False
 
 	def setStatus(self, status: str):
-		if db.setColumn(self.id, {"status":status}, self.col_name):
+		if self.getDB().updateDocByID(self.id, {"status":status}):
 			self.status = status
 			return True
 		else:
@@ -144,9 +147,9 @@ class Job():
 			return False
 
 	def setLastRun(self):
-		now = db.getTimestamp()
-		db.setColumn(self.id, 
-			{"status":"finished", "last_run": now}, self.col_name)
+		now = DB.getTimestamp()
+		self.getDB().updateDocByID(self.id, 
+			{"status":"finished", "last_run": now})
 		self.last_run = now
 		return True
 
@@ -170,13 +173,13 @@ class Job():
 		
 	def getAll(self, type="object"):
 		log.write("get all jobs", "debug")
-		doc = db.getCol(self.col_name)
+		docs = self.getDB().getCollection()
 		
 		if(type == "JSON"):
-			return doc
+			return docs
 		else:
 			ret = []
-			for d in doc:
+			for d in docs:
 				c_job = Job(str(d["_id"]))
 				ret.append(c_job)
 			return ret
@@ -188,14 +191,14 @@ class Job():
 			return False
 
 	def setWorker(self, id: str):
-		if db.setColumn(self.id, {"worker":id}, self.col_name):
+		if self.getDB().updateDocByID(self.id, {"worker":id}):
 			self.worker = id
 			return True
 
 	def lock(self, worker):
 		now = datetime.datetime.now()
 		self.lock_time = now.strftime('%Y-%m-%d %H:%M:%S')
-		db.setColumn(self.id, {"lock_time":self.lock_time,"worker":worker}, self.col_name)
+		self.getDB().updateDocByID(self.id, {"lock_time":self.lock_time,"worker":worker})
 		self.worker = worker
 		return True
 
