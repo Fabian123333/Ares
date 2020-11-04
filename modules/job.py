@@ -12,10 +12,6 @@ from core import log
 
 from modules import credential, target, host
 
-col_name="job"
-lock_interval = 1 # 1min
-lock_wait_time = 0 # seconds to wait to ensure integrity
-
 class Job():
 	col_name = "job"
 	lock_wait_time = 0 # sec to ensure lock
@@ -33,13 +29,13 @@ class Job():
 		task_ids: list
 
 	def getDB(self):
-		return DB("job")
+		return DB(self.col_name)
 
 	def __init__(self, id=None, name=None, data=None):
 
 		if data == None:
 			if(name != None and id == None):
-				id = getIdByName()
+				id = self.getIdByName()
 			if(id != None and id != False):
 				return self.get(id)
 		else:

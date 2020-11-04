@@ -20,7 +20,7 @@ class Backup():
 		return ts
 
 	def getNewBackupPath(self):
-		return self.getBackupRoot() + "/" + self.start_time + "-" + self.task["name"] + ".tar.gz"
+		return self.getBackupRoot() + "/" + self.start_time + "-" + self.task.getName() + ".tar.gz"
 
 	def getContainerBackupPath(self, name):
 		return self.getBackupRoot() + "/" + self.start_time + "-" + name + ".tar.gz"
@@ -32,10 +32,10 @@ class Backup():
 	def run(self, task):
 		self.task = task
 	
-		log.write("run task: " + str(task["_id"]))
+		log.write("run task: " + str(self.task.getID()))
 		self.prepare(task)
 
-		if(task["type"] == "file"):
+		if(self.task.getType() == "file"):
 			log.write("init file backup", "notice")
 			self.filename = self.getNewBackupPath()
 			
@@ -43,12 +43,12 @@ class Backup():
 			
 			return True
 
-		elif(task["type"] == "docker"):
+		elif(self.task.getType() == "docker"):
 			log.write("init docker backup", "notice")
 			c_ids = []
 			
-			if "container" in task["data"]:
-				for container in task["data"]["container"]:
+			if self.task.getData("container"):
+				for container in self.task.getData("container"):
 					log.write("fetch ids for container name: " + container, "debug")
 					c_ids = self.source.getContainersByName(container)		
 					if len(c_ids) == 0:
@@ -58,8 +58,8 @@ class Backup():
 							self.filename = self.getContainerBackupPath(container)
 							self.backupDockerContainer(id, container)
 
-			if "stacks" in task["data"]:
-				for stack in task["data"]["stacks"]:			
+			if self.task.getData("stacks"):
+				for stack in self.task.getData("stacks"):			
 					log.write("fetch containers for stack name: " + stack, "debug")
 					c_names = self.source.getContainersByStack(stack)
 					if len(c_names) == 0:
@@ -80,7 +80,7 @@ class Backup():
 			self.target.createDirectoryRecursive(self.getBackupRoot())
 			
 		self.target.openFile(self.filename)
-		self.source.createArchiveFromPaths(self.task["data"])
+		self.source.createArchiveFromPaths(self.task.getData())
 						
 		while True:
 			data = self.source.readBinary()
@@ -128,21 +128,21 @@ class Backup():
 		
 		doc = {"job_id": str(self.job.getID()), 
 				"file": self.filename, 
-				"task_id": str(self.task["_id"]), 
+				"task_id": self.task.getID(), 
 				"host_id": self.source.id, 
-				"type": self.task["type"],
+				"type": self.task.getType(),
 				"hostname": self.source.hostname, "log": log.getBuffer(),"start_time": self.start_time, "end_time": self.end_time}
 		
 		db.addDoc(doc, col_name)
 	
 	def getBackupRootShort(self):
-		return "/backup/" + str(self.job.getID()) + "/" + str(self.task["_id"]) + "/"
+		return "/backup/" + str(self.job.getID()) + "/" + self.task.getID() + "/"
 	
 	def getBackupRootStack(self, stack):
-		return "/backup/" + str(self.job.getID()) + "/" + str(self.task["_id"]) + "/" + stack + "/"
+		return "/backup/" + str(self.job.getID()) + "/" + self.task.getID() + "/" + stack + "/"
 	
 	def getBackupRoot(self):
-		return "/backup/" + str(self.job.getID()) + "/" + str(self.task["_id"]) + "/" + self.source.host + "/"
+		return "/backup/" + str(self.job.getID()) + "/" + self.task.getID() + "/" + self.source.host + "/"
 
 	def prepare(self, task):
 		self.task = task

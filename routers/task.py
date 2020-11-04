@@ -1,32 +1,38 @@
 from bson import json_util
 from fastapi import APIRouter, HTTPException
-from modules import task
+from modules.task import Task
+
+
+from modules.parser import parseJson, parseOutput
 
 router = APIRouter()
 
 @router.get("/", tags=["task"])
-async def getAll():
-	tasks = task.getAll()
+async def getAll(filter: Task.StructTaskFilter):
+	if(hasattr(filter, "filter")):
+		tasks = Task().getAll(filter.filter)
+	else:
+		tasks = Task().getAll()
+		
 	if ( len(tasks) == 0 ):
 		raise HTTPException(status_code=404, detail="no tasks found")
 	else:
-		return json_util.dumps(tasks,default=json_util.default)
+		return parseJson(tasks)
 
 @router.get("/{id}", tags=["task"])
 async def get(id: str):
-	ret = task.get(id)
+	ret = Task(id)
 	if ( ret == False ):
 		raise HTTPException(status_code=404, detail="task not found")
 	else:
-		return json_util.dumps(ret,default=json_util.default)
+		return parseJson(ret)
 
 @router.post("/", tags=["task"])
-async def create(data: task.StructTaskNew):
-
+async def create(data: Task.StructTaskNew):
 	if(task.getByName(data.name)):
 		raise HTTPException(status_code=422, detail="task already exist")
 	
-	id = task.create(data)
+	id = Task(data)
 
 	if id:
 		return {"state": "true"}

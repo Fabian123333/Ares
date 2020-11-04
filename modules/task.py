@@ -1,80 +1,147 @@
+import json
+
 from bson.objectid import ObjectId
 from pydantic import BaseModel
 from typing import Optional
 
-from core import db
 from core import log
+
+from core.db import DB
 
 from modules import credential
 
-col_name="task"
-
-class StructTaskNew(BaseModel):
+class Task():
+	col_name = "task"
+	exist = False
 	name: str
-	type: Optional[str] = "file" # support file, database, partition
-	description: Optional[str] = None
-	data: dict
-	
-	class Config:
-		schema_extra = {
-			"example": {
-				"name": "Docker Backup",
-				"type": "file",
-				"data": {
-					"container": ["dyndns_app"],
-					"stacks": ["ares", "fhem", "swarmpit", "unifi"]
+
+	class StructTaskFilter(BaseModel):
+		filter: Optional[dict] # support file, database, partition
+
+		class Config:
+			schema_extra = {
+				"example": {
+					"filter": {
+						"name": "Docker Backup",
+						"type": "file"
+					}
+				}
+			}		
+		
+
+	class StructTaskNew(BaseModel):
+		name: str
+		type: Optional[str] = "file" # support file, database, partition
+		description: Optional[str] = None
+		data: dict
+		
+		class Config:
+			schema_extra = {
+				"example": {
+					"name": "Docker Backup",
+					"type": "file",
+					"data": {
+						"container": ["dyndns_app"],
+						"stacks": ["ares", "fhem", "swarmpit", "unifi"]
+					}
 				}
 			}
-		}
 
-def get(id: str):
-	log.write("get task " + id, "debug")
-	ret = db.getByID(id, col_name)
-	return ret
+	def __init__(self, id=None, name=None, data=None):
 
-def getAll():
-	log.write("get all tasks", "debug")
-	col = db.db[col_name]
-	ret = []
+		if data == None:
+			if(name != None and id == None):
+				id = self.getIdByName()
+			if(id != None and id != False):
+				return self.get(id)
+		else:
+			if id == None:
+				return self.create(data)
+
+	def getDB(self):
+		return DB(self.col_name)
+		
+	def toJSON(self):	
+		return json.dumps(self, default=lambda o: o.__dict__, 
+			sort_keys=True, indent=4)
+
+	def getIdByName(self, id: str):
+		doc = self.getDB().findOne({"name": name})
+		
+		if not doc:
+			return False
 	
-	for x in col.find():
-		print(x)
-		ret.append(x)
+		return str(doc["_id"])
 
-	return ret
-
-def getByName(name: str):
-	log.write("get task by name: " + name, "debug")
-	col = db.db[col_name]
-	doc = col.find({"name": name})
+	def create(self, data):
+		log.write("create task: " + str(data), "debug")
 	
-	for d in doc:
-		log.write("found task by name: " + str(doc), "debug")
-		return d
+		if(Task(data.name).exists()):
+			log.write("error task already exists: " + str(data), "debug")
+			return False
 
-	log.write("found no task by name: " + name, "debug")
-	return False
-
-def exists(id: str):
-	log.write("check if task exists: " + id, "debug")
-	col = db.db[col_name]
+		log.write("create task: " + str(data))
 	
-	if(col.count_documents({ '_id': ObjectId(id) }, limit = 1)):
-		return True
-	else:
+		doc = data.dict()
+		return self.getDB().addDoc(doc)
+
+	def getID(self):
+		if hasattr(self, "id"):
+			return self.id
+		else:
+			return False
+
+	def exists(self):
+		return self.exist
+
+	def getName(self):
+		if hasattr(self, "name"):
+			return self.name
 		return False
 
-def create(data: StructTaskNew):
-	log.write("create task: " + str(data), "debug")
-	col = db.db[col_name]
-	
-	if(getByName(data.name)):
-		log.write("error task already exists: " + str(data), "debug")
-		return False
+	def get(self, id: str):
+		log.write("load task by id: " + id, "debug")
+		ret = self.getDB().get(id)
+		
+		if ret:
+			for k, v in ret.items():
+				setattr(self, k, v)
+			self.id = str(ret["_id"])
+			del(self._id)
+			self.exist = True
+		else: 
+			return False
 
-	log.write("create task: " + str(data))
+	def getAll(self, filter={}, type="object"):
+		log.write("get all tasks", "debug")
+		docs = self.getDB().getCollection(query=filter)
+		
+		if(type == "JSON"):
+			return docs
+		else:
+			ret = []
+			for d in docs:
+				c_task = Task(str(d["_id"]))
+				ret.append(c_task)
+			return ret
+
+	def getData(self, type=None):
+		if hasattr(self, "data"):
+			if type == None:
+				return self.data
+			if hasattr(self.data, type):
+				return self.data[type]
+		return False
 	
-	doc = data.dict()
-	x = col.insert_one(doc)
-	
-	return True
+	def getType(self):
+		if hasattr(self, "type"):
+			return self.type
+		else:
+			return False
+
+	def setType(self, val: str):
+		if self.getDB().updateDocByID(self.id, {"type":val}):
+			self.type = val
+			return True
+		else:
+			return False

@@ -4,9 +4,10 @@ from typing import Optional
 from core import db
 from core import log
 
-from modules import host, target, task
+from modules import host, target
 
 from modules.job import Job
+from modules.task import Task
 
 from modules.backup import Backup
 
@@ -28,9 +29,9 @@ class worker():
 			h = host.prepare(h_id)
 			
 			for t_id in job.getTasks():
-				cur_task = task.get(t_id)
+				cur_task = Task(t_id)
 				if(job.getType() == "backup"):
-					log.write("start task " + job.getName(), "debug")
+					log.write("start task " + cur_task.getName(), "debug")
 					backup = Backup(job, h, t)
 					backup.run(cur_task)
 
