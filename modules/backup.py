@@ -126,7 +126,7 @@ class Backup():
 		
 		self.end_time = self.getTimestamp()
 		
-		doc = {"job_id": str(self.job["_id"]), 
+		doc = {"job_id": str(self.job.getID()), 
 				"file": self.filename, 
 				"task_id": str(self.task["_id"]), 
 				"host_id": self.source.id, 
@@ -136,13 +136,13 @@ class Backup():
 		db.addDoc(doc, col_name)
 	
 	def getBackupRootShort(self):
-		return "/backup/" + str(self.job["_id"]) + "/" + str(self.task["_id"]) + "/"
+		return "/backup/" + str(self.job.getID()) + "/" + str(self.task["_id"]) + "/"
 	
 	def getBackupRootStack(self, stack):
-		return "/backup/" + str(self.job["_id"]) + "/" + str(self.task["_id"]) + "/" + stack + "/"
+		return "/backup/" + str(self.job.getID()) + "/" + str(self.task["_id"]) + "/" + stack + "/"
 	
 	def getBackupRoot(self):
-		return "/backup/" + str(self.job["_id"]) + "/" + str(self.task["_id"]) + "/" + self.source.host + "/"
+		return "/backup/" + str(self.job.getID()) + "/" + str(self.task["_id"]) + "/" + self.source.host + "/"
 
 	def prepare(self, task):
 		self.task = task
