@@ -5,39 +5,43 @@ import paramiko
 import select
 
 class HostTemplate():
-	def __init__(self, data):
-		if("ip_address" in data and data["ip_address"] != None):
-			log.write("connect to source using IP: " + data["ip_address"], "debug")
-			self.host = data["ip_address"]
-		elif("hostname" in data):
-			log.write("connect to source using hostname " + data["hostname"], "debug")
-			self.host = data["hostname"]
+	def __init__(self, conf):
+		self.conf = conf
+		
+		ip_address = self.conf.getIPAdress()
+		hostname = self.conf.getHostname()
+		
+		if ip_address:
+			log.write("connect to source using IP: " + ip_address, "debug")
+			self.host = ip_address
+		elif fqdn:
+			log.write("connect to source using hostname: " + hostname, "debug")
+			self.host = hostname
 		else:
 			log.write("error no ip and hostname passed","error")
 			return False
 
-		self.hostname = data["hostname"]
-		self.id = str(data["_id"])
-
 		self.client = paramiko.SSHClient()
 		self.client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
 
-	def setCredential(self, data):
-		if(not "type" in data):
+	def setCredential(self, cred):
+		if(not cred.getType()):
 			log.write("error no type specified for credentials", "error")
 			return False
 		
-		if(data["type"] == "certificate"):
+		if(cred.getType() == "certificate"):
 			log.write("deploy private key")
 			with open("/id_rsa", "w+") as fh:
-				fh.write(data["secret"])
-			
+				fh.write(cred.getSecret())
 			os.chmod("/id_rsa", 0o600)
+		elif(cred.getType() == "password"):
+			self.secret = cred.getSecret()
+		else:
+			log.write("error unsupported credential type: " + cred.getType())
+			return False
 		
-		self.secret_type = data["type"]
-		
-		self.secret = data["secret"]
-		self.username = data["username"]
+		self.username = cred.getUsername()
+		self.secret_type = cred.getType()
 
 	def connect(self):
 		if(self.secret_type == "password"):

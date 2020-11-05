@@ -1,17 +1,19 @@
-from core import log, db
+from core import log
+
+from core.db import DB
 
 import os
 import datetime
 
-col_name = "backup"
-
 class Backup():
+	col_name = "backup"
+	
 	def __init__(self, job, source, target):
 		log.clearBuffer()
 		self.start_time = self.getTimestamp()
 		self.job = job
-		self.source = source
 		self.target = target
+		self.source = source
 		self.filename = ""
 
 	def getTimestamp(self):
@@ -129,11 +131,11 @@ class Backup():
 		doc = {"job_id": str(self.job.getID()), 
 				"file": self.filename, 
 				"task_id": self.task.getID(), 
-				"host_id": self.source.id, 
+				"host_id": self.source.conf.getID(), 
 				"type": self.task.getType(),
-				"hostname": self.source.hostname, "log": log.getBuffer(),"start_time": self.start_time, "end_time": self.end_time}
+				"hostname": self.source.conf.getHostname(), "log": log.getBuffer(),"start_time": self.start_time, "end_time": self.end_time}
 		
-		db.addDoc(doc, col_name)
+		DB(self.col_name).addDoc(doc)
 	
 	def getBackupRootShort(self):
 		return "/backup/" + str(self.job.getID()) + "/" + self.task.getID() + "/"
@@ -142,7 +144,7 @@ class Backup():
 		return "/backup/" + str(self.job.getID()) + "/" + self.task.getID() + "/" + stack + "/"
 	
 	def getBackupRoot(self):
-		return "/backup/" + str(self.job.getID()) + "/" + self.task.getID() + "/" + self.source.host + "/"
+		return "/backup/" + str(self.job.getID()) + "/" + self.task.getID() + "/" + self.source.conf.getHostname() + "/"
 
 	def prepare(self, task):
 		self.task = task

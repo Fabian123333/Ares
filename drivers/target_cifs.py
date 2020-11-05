@@ -1,20 +1,24 @@
 from core import log
 import fs, os
 
-class Target():
-	def __init__(self, data):
-		if("ip_address" in data):
-			log.write("connect to target using IP: " + data["ip_address"], "debug")
-			self.host = data["ip_address"]
-		elif("fqdn" in data):
-			log.write("connect to target using FQDN: " + data["fqdn"], "debug")
-			self.host = data["fqdn"]
+class TargetTemplate():
+	def __init__(self, conf):
+		self.conf = conf
+		
+		ip_address = self.conf.getIPAdress()
+		fqdn = self.conf.getFQDN()
+		
+		if ip_address:
+			log.write("connect to target using IP: " + ip_address, "debug")
+			self.host = ip_address
+		elif fqdn:
+			log.write("connect to target using FQDN: " + fqdn, "debug")
+			self.host = fqdn
 		else:
 			log.write("error no ip and fqdn passed","error")
 			return False
-		
-		self.path = data["path"]
-		self.location = data["location"]
+			
+		self.path = self.conf.path
 		self.fs = None
 
 	def setCredential(self, credential):
@@ -33,10 +37,10 @@ class Target():
 	def connect(self):
 		log.write("estabish connection", "debug")
 		if(self.secret_type == "password"):
-			self.fs = fs.open_fs('smb://%s:%s@%s/%s' % (self.username, self.secret, self.host, self.location))
-			if(not self.fs.exists(self.path)):
-				log.write("create backup dir: " + self.path, "info")
-				self.fs.makedir(self.path)
+			self.fs = fs.open_fs('smb://%s:%s@%s/%s' % (self.username, self.secret, self.host, self.conf.location))
+			if(not self.fs.exists(self.conf.path)):
+				log.write("create backup dir: " + self.conf.path, "info")
+				self.fs.makedir(self.conf.path)
 		else:
 			log.write("unsupported secret type", "error")
 

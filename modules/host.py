@@ -21,18 +21,25 @@ class Host():
 		type: Optional[str] = "linux" # support linux windows 
 		credential_id: str
 
-	def __init__(self):
-		pass
+	def __init__(self, id=None, name=None, data=None):
+		if data == None:
+			if(name != None and id == None):
+				id = self.getIdByName()
+			if(id != None and id != False):
+				return self.get(id)
+		else:
+			if id == None:
+				return self.create(data)
 
 	def getCredentialID(self):
-		if(hasattr(self, credential_id)):
+		if(hasattr(self, "credential_id")):
 			return self.credential_id
 		return False
 
-	def getCredential():
+	def getCredential(self):
 		id = self.getCredentialID()
 		if id:
-			return credential(self.getCredentialID())
+			return Credential(self.getCredentialID())
 		return False
 
 	def getDB(self):
@@ -81,9 +88,24 @@ class Host():
 	def exists(self):
 		return self.exist
 
+	def getIPAdress(self):
+		if hasattr(self, "ip_address"):
+			return self.ip_address
+		return False
+
 	def getName(self):
 		if hasattr(self, "name"):
 			return self.name
+		return False
+
+	def getHostname(self):
+		if hasattr(self, "hostname"):
+			return self.hostname
+		return False
+
+	def getType(self):
+		if hasattr(self, "type"):
+			return self.type
 		return False
 
 	def get(self, id: str):
@@ -121,12 +143,15 @@ class Host():
 		return str(doc["_id"])
 
 	def prepare(self):
-		exec("from drivers.host_" + host["type"] + " import HostTemplate", globals())
-		h = HostTemplate(host)
+		exec("from drivers.host_" + self.getType() + " import HostTemplate", globals())
+		h = HostTemplate(self)
 	
-		cred = sel.fgetCredential()
+		cred = self.getCredential()
 	
 		if(cred):
 			h.setCredential(cred)
 		h.connect()
-		return h
+		self.host_connection = h
+
+	def getConnection(self):
+		return self.host_connection

@@ -4,10 +4,10 @@ from typing import Optional
 from core import db
 from core import log
 
-from modules import host, target
-
 from modules.job import Job
 from modules.task import Task
+from modules.host import Host
+
 
 from modules.backup import Backup
 
@@ -21,21 +21,21 @@ class worker():
 
 	def execJob(self, job):
 		log.write("exec job " + job.id , "notice")
-		# job.setStatus("started")
-		t = target.prepare(job.getTarget())
+		job.setStatus("started")
+		job.prepare()
+		job.getTarget().prepare()
 
-		for h_id in job.getHosts():
-			log.write("process host " + h_id , "notice")
-			h = host.prepare(h_id)
+		for host in job.getHosts():
+			log.write("process host " + host.getID() , "notice")
+			host.prepare()
 			
-			for t_id in job.getTasks():
-				cur_task = Task(t_id)
+			for task in job.getTasks():
 				if(job.getType() == "backup"):
-					log.write("start task " + cur_task.getName(), "debug")
-					backup = Backup(job, h, t)
-					backup.run(cur_task)
+					log.write("start task " + task.getName(), "debug")
+					backup = Backup(job, host.getConnection(), job.getTarget().getConnection())
+					backup.run(task)
 
-		# job.finish(str(self.job["_id"]))
+		job.setLastRun()
 
 	def runJob(self):
 		job = Job().request()

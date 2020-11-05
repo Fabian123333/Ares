@@ -22,7 +22,6 @@ class Credential():
 		return DB(self.col_name)
 
 	def __init__(self, id=None, name=None, data=None):
-
 		if data == None:
 			if(name != None and id == None):
 				id = self.getIdByName()
@@ -107,7 +106,7 @@ class Credential():
 		else:
 			ret = []
 			for d in docs:
-				r = Secret(str(d["_id"]))
+				r = Credential(str(d["_id"]))
 				ret.append(r)
 			return ret
 

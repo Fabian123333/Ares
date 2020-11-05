@@ -34,10 +34,10 @@ class Secret():
 			if(name != None and id == None):
 				id = self.getIdByName()
 			if(id != None and id != False):
-				return self.get(id)
+				self.get(id)
 		else:
 			if id == None:
-				return self.create(data)
+				self.create(data)
 
 	def toJSON(self):	
 		r = self

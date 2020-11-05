@@ -10,13 +10,18 @@ from bson.objectid import ObjectId
 from core.db import DB
 from core import log
 
-from modules import credential, target, host
+from modules.host import Host
+from modules.task import Task
+from modules.target import Target
 
 class Job():
 	col_name = "job"
 	lock_wait_time = 0 # sec to ensure lock
 	lock_interval = 1 # 1min
 	exist = False
+	target: Target
+	tasks: list
+	hosts: list
 
 	class StructNew(BaseModel):
 		name: str
@@ -28,6 +33,26 @@ class Job():
 		host_ids: list
 		task_ids: list
 
+	def prepareTarget(self):
+		self.target = Target(self.getTargetID())
+	
+	def prepareHosts(self):
+		hosts = []
+		for id in self.getHostIDs():
+			hosts.append(Host(id))
+		self.hosts = hosts
+	
+	def prepareTasks(self):
+		tasks = []
+		for id in self.getTaskIDs():
+			tasks.append(Task(id))
+		self.tasks = tasks
+
+	def prepare(self):
+		self.prepareTasks()
+		self.prepareTarget()
+		self.prepareHosts()
+
 	def getDB(self):
 		return DB(self.col_name)
 
@@ -37,33 +62,42 @@ class Job():
 			if(name != None and id == None):
 				id = self.getIdByName()
 			if(id != None and id != False):
-				return self.get(id)
+				self.get(id)
 		else:
 			if id == None:
-				return self.create(data)
+				self.create(data)
 
 	def toJSON(self):	
 		return json.dumps(self, default=lambda o: o.__dict__, 
 			sort_keys=True, indent=4)
 
 	def getTarget(self):
+		return self.target
+
+	def getTargetID(self):
 		if hasattr(self, "target_id"):
 			return self.target_id
 		else:
 			return False
 
 	def getHosts(self):
+		return self.hosts
+
+	def getHostIDs(self):
 		if hasattr(self, "host_ids"):
 			return self.host_ids
 		else:
 			return False
 			
-	def getTasks(self):
+	def getTaskIDs(self):
 		if hasattr(self, "task_ids"):
 			return self.task_ids
 		else:
 			return False
-			
+
+	def getTasks(self):
+		return self.tasks
+
 	def getType(self):
 		if hasattr(self, "type"):
 			return self.type

@@ -1,86 +1,164 @@
+import json
 from bson.objectid import ObjectId
 from pydantic import BaseModel
 from typing import Optional
 
-from core import db
+from core.db import DB
 from core import log
 
 from modules.credential import Credential
 
 col_name="target"
 
-class StructNew(BaseModel):
-	name: str
-	fqdn: Optional[str] = None
-	description: Optional[str] = None
-	ip_address: Optional[str] = None
-	location: Optional[str] = ""
-	path: Optional[str] = "/ares"
-	type: str # support ssh sftp rsync cifs
-	credential_id: str
 
-def get(id: str):
-	log.write("get target " + id, "debug")
-	ret = db.getByID(id, col_name)
-	return ret
+from core import log
 
-def prepare(id: str):
-	target = get(id)
-	exec("from drivers.target_" + target["type"] + " import Target", globals())
-	t = Target(target)
-	
-	if("credential_id" in target):
-		cred = Credential(target["credential_id"])
-		t.setCredential(cred)
-	t.connect()
-	return t
+from modules.credential import Credential
 
-def getAll():
-	log.write("get all targets", "debug")
-	col = db.db[col_name]
-	ret = []
-	
-	for x in col.find():
-		ret.append(x)
+class Target():
+	col_name = "target"
 
-	return ret
+	class StructNew(BaseModel):
+		hostname: str
+		credential_id: str
+		description: Optional[str] = None
+		ip_address: Optional[str] = None
+		type: Optional[str] = "linux" # support linux windows 
+		location: Optional[str]
+		path: Optional[str]
 
-def getByName(name: str):
-	log.write("get target by name: " + name, "debug")
-	col = db.db[col_name]
-	doc = col.find({"name": name})
-	
-	for d in doc:
-		log.write("found target by name: " + str(doc), "debug")
-		return d
+	def __init__(self, id=None, name=None, data=None):
+		if data == None:
+			if(hostname != None and id == None):
+				id = self.getIdByHostname()
+			if(id != None and id != False):
+				return self.get(id)
+		else:
+			if id == None:
+				return self.create(data)
 
-	log.write("found no target by name: " + name, "debug")
-	return False
-
-def exists(id: str):
-	log.write("check if target exists: " + id, "debug")
-	col = db.db[col_name]
-	
-	if(col.count_documents({ '_id': ObjectId(id) }, limit = 1)):
-		return True
-	else:
+	def getCredentialID(self):
+		if(hasattr(self, "credential_id")):
+			return self.credential_id
 		return False
 
-def create(target: StructNew):
-	log.write("create target: " + str(target), "debug")
-	col = db.db[col_name]
-	
-	if(getByName(target.name)):
-		log.write("error target already exists: " + str(target), "debug")
+	def getFQDN(self):
+		if(hasattr(self, "fqdn")):
+			return self.fqdn
+		return False	
+
+	def getCredential(self):
+		id = self.getCredentialID()
+		if id:
+			return Credential(self.getCredentialID())
 		return False
-	
-	if(not credential.exists(target.credential_id)):
-		log.write("error target does not exist: " + str(target.credential_id), "debug")	
+
+	def getDB(self):
+		return DB(self.col_name)
+
+	def __init__(self, id=None, name=None, data=None):
+		if data == None:
+			if(name != None and id == None):
+				id = self.getIdByHostname()
+			if(id != None and id != False):
+				self.get(id)
+		else:
+			if id == None:
+				self.create(data)
+
+	def toJSON(self):	
+		return json.dumps(self, default=lambda o: o.__dict__, 
+			sort_keys=True, indent=4)
+
+	def getIPAdress(self):
+		if hasattr(self, "ip_address"):
+			return self.ip_address
 		return False
+
+	def getType(self):
+		if hasattr(self, "type"):
+			return self.type
+		return Fal
+
+	def getIdByHostname(self, id: str):
+		doc = self.getDB().findOne({"hostname": name})
+		
+		if not doc:
+			return False
 	
-	log.write("create target setup: " + str(target))
+		return str(doc["_id"])
+
+	def create(self, data):
+		log.write("create target: " + str(data), "debug")
 	
-	doc = {"name": target.name, "description": target.description, "fqdn": target.fqdn, "ip_address": target.ip_address, "type": target.type, "credential_id": target.credential_id}
-	x = col.insert_one(doc)
+		if(Target(name=data.hostname).exists()):
+			log.write("error target already exists: " + str(data), "debug")
+			return False
+
+		log.write("create target: " + str(data))
 	
-	return True
+		doc = data.dict()
+		return self.getDB().addDoc(doc)
+
+	def getID(self):
+		if hasattr(self, "id"):
+			return self.id
+		else:
+			return False
+
+	def exists(self):
+		return self.exist
+
+	def getName(self):
+		if hasattr(self, "name"):
+			return self.name
+		return False
+
+	def get(self, id: str):
+		log.write("load target by id: " + id, "debug")
+		ret = self.getDB().get(id)
+		
+		if ret:
+			for k, v in ret.items():
+				setattr(self, k, v)
+			self.id = str(ret["_id"])
+			del(self._id)
+			self.exist = True
+		else: 
+			return False
+
+	def getAll(self, filter={}, type="object"):
+		log.write("get all targets", "debug")
+		docs = self.getDB().getCollection(query=filter)
+		
+		if(type == "JSON"):
+			return docs
+		else:
+			ret = []
+			for d in docs:
+				r = Target(str(d["_id"]))
+				ret.append(r)
+			return ret
+
+	def getIDByHostname(self, hostname: str):
+		doc = self.getDB().findOne({"hostname": hostname})
+		
+		if not doc:
+			return False
+	
+		return str(doc["_id"])
+
+	def prepare(self):
+		exec("from drivers.target_" + self.getType() + " import TargetTemplate", globals())
+		t = TargetTemplate(self)
+	
+		cred = self.getCredential()
+		
+		if(cred):
+			t.setCredential(cred)
+		t.connect()
+		
+		self.target_connection = t
+
+	def getConnection(self):
+		return self.target_connection
