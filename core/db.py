@@ -62,7 +62,7 @@ class DB():
 		if(not self.exists(id)):
 			return False
 			
-		return self.col.delete_one({ '_id': ObjectId(id) }, limit = 1)
+		return self.col.delete_one({ '_id': ObjectId(id) })
 
 	def get(self, id):
 		if not self.exists(id):
@@ -77,5 +77,5 @@ class DB():
 		else:
 			return False
 
-	def findOne(pattern):
+	def findOne(self, pattern):
 		return self.col.find_one(pattern)

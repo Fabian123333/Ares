@@ -1,29 +1,14 @@
 import json
 
-from pydantic import BaseModel
-from typing import Optional
-
 from bson.objectid import ObjectId
 
 from core.db import DB
 from core import log
 
-col_name="secret"
-
 class Secret():
-	id: int
-	name: str
-	description: Optional[str] = None
-	secret: str
-	
 	exist = False
 
 	col_name = "secret"
-
-	class StructNew(BaseModel):
-		name: str
-		description: Optional[str] = None
-		secret: str
 
 	def getDB(self):
 		return DB(self.col_name)
@@ -73,7 +58,9 @@ class Secret():
 			return False
 
 	def exists(self):
-		return self.exist
+		if(hasattr(self, "exist")):
+			return self.exist
+		return False
 
 	def getName(self):
 		if hasattr(self, "name"):
@@ -109,3 +96,23 @@ class Secret():
 	def getSecret(self):
 		log.write("get secret: " + self.id, "debug")
 		return self.secret
+
+	def update(self, data):
+		if not self.exists():
+			return False
+		
+		value = dict()
+		for k, v in vars(data).items():
+			if v != None:
+				value[k] = v
+
+		log.write("update secret %s (%s)" % (self.getID(), value))
+		update = self.getDB().updateDocByID(self.id, value)
+		self.get(self.getID())
+		return True
+
+	def delete(self):
+		if(not self.exists()):
+			return True
+		log.write("delete secret " + str(self.getID()), "debug")
+		return self.getDB().deleteById(self.getID())

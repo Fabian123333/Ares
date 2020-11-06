@@ -3,10 +3,6 @@ import uuid
 import time
 import json
 
-from pydantic import BaseModel
-from typing import Optional
-from bson.objectid import ObjectId
-
 from core.db import DB
 from core import log
 
@@ -22,16 +18,6 @@ class Job():
 	target: Target
 	tasks: list
 	hosts: list
-
-	class StructNew(BaseModel):
-		name: str
-		description: Optional[str] = None
-		type: Optional[str] = "backup"
-		snapshots: Optional[int] = 14
-		interval: Optional[int] = 720 # interval in minutes
-		target_id: str 
-		host_ids: list
-		task_ids: list
 
 	def prepareTarget(self):
 		self.target = Target(self.getTargetID())
@@ -64,7 +50,7 @@ class Job():
 			if(id != None and id != False):
 				self.get(id)
 		else:
-			if id == None:
+			if id == None and data != None:
 				self.create(data)
 
 	def toJSON(self):	
@@ -130,11 +116,16 @@ class Job():
 			return False
 
 	def delete(self):
-		log.write("delete job " + self.id, "debug")
-		return self.getDB().deleteById(job_id)
+		if(not self.exists()):
+			return True
+		log.write("delete job " + str(self.getID()), "debug")
+		return self.getDB().deleteById(self.getID())
 
 	def exists(self):
-		return self.exist
+		if(hasattr(self, "exist")):
+			return self.exist
+		else:
+			return False
 
 	def get(self, id: str):
 		log.write("load job by id: " + id, "debug")
@@ -176,6 +167,20 @@ class Job():
 		else:
 			return False
 
+	def update(self, data):
+		if not self.exists():
+			return False
+		
+		value = dict()
+		for k, v in vars(data).items():
+			if v != None:
+				value[k] = v
+
+		log.write("update job %s (%s)" % (self.getID(), value))
+		update = self.getDB().updateDocByID(self.id, value)
+		self.get(self.getID())
+		return True
+
 	def setLastRun(self):
 		now = DB.getTimestamp()
 		self.getDB().updateDocByID(self.id, 
@@ -191,9 +196,10 @@ class Job():
 
 	def getNextRun(self):
 		if hasattr(self, "last_run"):
-			return datetime.datetime.strptime(self.getLastRun(), '%Y-%m-%d %H:%M:%S') + datetime.timedelta(minutes=self.interval)
+			ret = datetime.datetime.strptime(self.getLastRun(), '%Y-%m-%d %H:%M:%S') + datetime.timedelta(minutes=self.interval)
 		else:
-			return datetime.datetime.now()
+			ret = datetime.datetime.now() - datetime.timedelta(minutes=self.interval)
+		return ret
 
 	def getName(self):
 		if hasattr(self, "name"):
@@ -251,6 +257,7 @@ class Job():
 		log.write("start locking " + self.id, "debug")
 	
 		worker=str(uuid.uuid1())
+		self.worker = worker
 	
 		if(self.lock(worker)):
 			time.sleep(self.lock_wait_time)
@@ -260,6 +267,7 @@ class Job():
 		return False
 
 	def request(self):
+		log.write("request new job", "notice")
 		jobs = self.getAll()
 		for job in jobs:
 			if datetime.datetime.now() > job.getNextRun():

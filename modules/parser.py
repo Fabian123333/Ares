@@ -7,7 +7,7 @@ def parseJson(out):
 		for o in out:
 			ret.append(json.loads(o.toJSON()))
 	else:
-		ret = out.toJSON()
+		ret = json.loads(out.toJSON())
 	return json.loads(json_util.dumps(ret,default=json_util.default))
 
 def parseOutput(out):
@@ -32,3 +32,10 @@ def parseOutput(out):
 			out.append(j)
 	
 	return json.loads(json_util.dumps(out,default=json_util.default))
+
+def shrinkJson(data):
+	value = dict()
+	for k, v in vars(data).items():
+		if v != None and k != "exist":
+			value[k] = v
+	return value

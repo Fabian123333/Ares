@@ -18,15 +18,6 @@ from modules.credential import Credential
 class Target():
 	col_name = "target"
 
-	class StructNew(BaseModel):
-		hostname: str
-		credential_id: str
-		description: Optional[str] = None
-		ip_address: Optional[str] = None
-		type: Optional[str] = "linux" # support linux windows 
-		location: Optional[str]
-		path: Optional[str]
-
 	def __init__(self, id=None, name=None, data=None):
 		if data == None:
 			if(hostname != None and id == None):
@@ -36,6 +27,26 @@ class Target():
 		else:
 			if id == None:
 				return self.create(data)
+
+	def update(self, data):
+		if not self.exists():
+			return False
+		
+		value = dict()
+		for k, v in vars(data).items():
+			if v != None:
+				value[k] = v
+
+		log.write("update target %s (%s)" % (self.getID(), value))
+		update = self.getDB().updateDocByID(self.id, value)
+		self.get(self.getID())
+		return True
+
+	def delete(self):
+		if(not self.exists()):
+			return True
+		log.write("delete target " + str(self.getID()), "debug")
+		return self.getDB().deleteById(self.getID())
 
 	def getCredentialID(self):
 		if(hasattr(self, "credential_id")):
@@ -59,7 +70,7 @@ class Target():
 	def __init__(self, id=None, name=None, data=None):
 		if data == None:
 			if(name != None and id == None):
-				id = self.getIdByHostname()
+				id = self.getIdByHostname(name)
 			if(id != None and id != False):
 				self.get(id)
 		else:
@@ -80,7 +91,7 @@ class Target():
 			return self.type
 		return Fal
 
-	def getIdByHostname(self, id: str):
+	def getIdByHostname(self, name: str):
 		doc = self.getDB().findOne({"hostname": name})
 		
 		if not doc:
@@ -107,7 +118,10 @@ class Target():
 			return False
 
 	def exists(self):
-		return self.exist
+		if hasattr(self, "exist"):
+			return self.exist
+		else:
+			return False
 
 	def getName(self):
 		if hasattr(self, "name"):
@@ -128,7 +142,7 @@ class Target():
 			return False
 
 	def getAll(self, filter={}, type="object"):
-		log.write("get all targets", "debug")
+		log.write("get all targets with filter " + str(filter), "debug")
 		docs = self.getDB().getCollection(query=filter)
 		
 		if(type == "JSON"):

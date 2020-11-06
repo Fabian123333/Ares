@@ -1,13 +1,33 @@
 from fastapi import APIRouter, HTTPException
-from modules.task import Task
 from typing import Optional
+from pydantic import BaseModel
 
-from modules.parser import parseJson, parseOutput
+from modules.task import Task
+from modules.parser import parseJson, parseOutput, shrinkJson
 
 router = APIRouter()
 
+class Struct(BaseModel):
+	id: Optional[str] = None
+	name: Optional[str] = None
+	type: Optional[str] = None # support file, database, partition
+	description: Optional[str] = None
+	data: Optional[dict] = None
+
+	class Config:
+		schema_extra = {
+			"example": {
+				"name": "Docker Backup",
+				"type": "file",
+				"data": {
+					"container": ["dyndns_app"],
+					"stacks": ["ares", "fhem", "swarmpit", "unifi"]
+				}
+			}
+		}
+
 @router.get("/", tags=["task"])
-async def getAll(filter: Optional[dict] = {}):
+async def get_all_tasks(filter: Struct):
 	ret = Task().getAll(filter)
 		
 	if ( len(ret) == 0 ):
@@ -15,23 +35,47 @@ async def getAll(filter: Optional[dict] = {}):
 	else:
 		return parseJson(ret1)
 
-@router.get("/{id}", tags=["task"])
-async def get(id: str):
+@router.post("/query", tags=["task"], response_model=Struct)
+async def search_for_tasks(filter: Struct):
+	ret = Task().getAll(filter=shrinkJson(filter))
+	return parseJson(ret)
+
+@router.get("/{id}", tags=["task"], response_model=Struct)
+async def get_task(id: str):
 	ret = Task(id)
 	if ( ret == False ):
 		raise HTTPException(status_code=404, detail="task not found")
 	else:
 		return parseJson(ret)
 
-@router.post("/", tags=["task"])
-async def create(data: Task.StructTaskNew):
-	if(task.getByName(data.name)):
+@router.post("/", tags=["task"], response_model=Struct)
+async def create_task(data: Struct):
+	if(Task(name=data.name).exists()):
 		raise HTTPException(status_code=422, detail="task already exist")
 	
-	id = Task(data=data)
+	ret = Task(data=data)
 
-	if id:
-		return {"state": "true"}
+	if ret:
+		return parseJson(ret)
 	else:
 		raise HTTPException(status_code=422, detail="can't create task")
+		
+@router.put("/{id}", tags=["task"], response_model=Struct)
+async def update_task(id: str, item: Struct):
+	task = Task(id)
 	
+	if not task.exists():
+		raise HTTPException(status_code=404, detail="task not found")
+	
+	if not task.update(item):
+		raise HTTPException(status_code=422, detail="error update task")
+	
+	return parseJson(task)
+
+@router.delete("/{id}", tags=["task"])
+async def delete_task(id: str):
+	ret = Task(id).delete()
+	if ( ret == False ):
+		raise HTTPException(status_code=404, detail="task not found")
+	else:
+		return parseJson(ret)

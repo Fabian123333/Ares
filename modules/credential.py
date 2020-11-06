@@ -10,13 +10,6 @@ from modules.secret import Secret
 class Credential():
 	col_name="credential"
 	exist = False
-
-	class StructNew(BaseModel):
-		name: str
-		type: Optional[str] = "password" # support certificate, token, none and password
-		username: Optional[str] = "root"
-		description: Optional[str] = None
-		secret_id: str
 	
 	def getDB(self):
 		return DB(self.col_name)
@@ -67,7 +60,10 @@ class Credential():
 			return False
 
 	def exists(self):
-		return self.exist
+		if(hasattr(self, "exist")):
+			return self.exist
+		else:
+			return False
 
 	def getName(self):
 		if hasattr(self, "name"):
@@ -112,3 +108,23 @@ class Credential():
 
 	def getSecret(self):
 		return Secret(self.secret_id).getSecret()
+
+	def update(self, data):
+		if not self.exists():
+			return False
+		
+		value = dict()
+		for k, v in vars(data).items():
+			if v != None:
+				value[k] = v
+
+		log.write("update credential %s (%s)" % (self.getID(), value))
+		update = self.getDB().updateDocByID(self.id, value)
+		self.get(self.getID())
+		return True
+
+	def delete(self):
+		if(not self.exists()):
+			return True
+		log.write("delete credential " + str(self.getID()), "debug")
+		return self.getDB().deleteById(self.getID())

@@ -1,11 +1,6 @@
 import json
 
-from bson.objectid import ObjectId
-from pydantic import BaseModel
-from typing import Optional
-
 from core import log
-
 from core.db import DB
 
 from modules import credential
@@ -14,38 +9,6 @@ class Task():
 	col_name = "task"
 	exist = False
 	name: str
-
-	class StructTaskFilter(BaseModel):
-		filter: Optional[dict] # support file, database, partition
-
-		class Config:
-			schema_extra = {
-				"example": {
-					"filter": {
-						"name": "Docker Backup",
-						"type": "file"
-					}
-				}
-			}		
-		
-
-	class StructTaskNew(BaseModel):
-		name: str
-		type: Optional[str] = "file" # support file, database, partition
-		description: Optional[str] = None
-		data: dict
-		
-		class Config:
-			schema_extra = {
-				"example": {
-					"name": "Docker Backup",
-					"type": "file",
-					"data": {
-						"container": ["dyndns_app"],
-						"stacks": ["ares", "fhem", "swarmpit", "unifi"]
-					}
-				}
-			}
 
 	def __init__(self, id=None, name=None, data=None):
 
@@ -92,7 +55,10 @@ class Task():
 			return False
 
 	def exists(self):
-		return self.exist
+		if(hasattr(self, "exist")):
+			return self.exist
+		else:
+			return False
 
 	def getName(self):
 		if hasattr(self, "name"):
@@ -125,6 +91,26 @@ class Task():
 				ret.append(c_task)
 			return ret
 
+	def update(self, data):
+		if not self.exists():
+			return False
+		
+		value = dict()
+		for k, v in vars(data).items():
+			if v != None:
+				value[k] = v
+
+		log.write("update task %s (%s)" % (self.getID(), value))
+		update = self.getDB().updateDocByID(self.id, value)
+		self.get(self.getID())
+		return True
+
+	def delete(self):
+		if(not self.exists()):
+			return True
+		log.write("delete task " + str(self.getID()), "debug")
+		return self.getDB().deleteById(self.getID())
+		
 	def getData(self, type=None):
 		if hasattr(self, "data"):
 			if type == None:

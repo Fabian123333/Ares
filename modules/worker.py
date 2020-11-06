@@ -27,13 +27,14 @@ class worker():
 
 		for host in job.getHosts():
 			log.write("process host " + host.getID() , "notice")
-			host.prepare()
-			
-			for task in job.getTasks():
-				if(job.getType() == "backup"):
-					log.write("start task " + task.getName(), "debug")
-					backup = Backup(job, host.getConnection(), job.getTarget().getConnection())
-					backup.run(task)
+			if host.prepare():
+				for task in job.getTasks():
+					if(job.getType() == "backup"):
+						log.write("start task " + task.getName(), "debug")
+						backup = Backup(job, host.getConnection(), job.getTarget().getConnection())
+						backup.run(task)
+			else:
+				log.write("error: prepare host: " + host.getID() , "error")
 
 		job.setLastRun()
 

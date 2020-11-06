@@ -1,6 +1,4 @@
 import json
-
-from bson.objectid import ObjectId
 from pydantic import BaseModel
 from typing import Optional
 
@@ -14,22 +12,33 @@ col_name="host"
 class Host():
 	col_name = "host"
 
-	class StructNew(BaseModel):
-		hostname: str
-		description: Optional[str] = None
-		ip_address: Optional[str] = None
-		type: Optional[str] = "linux" # support linux windows 
-		credential_id: str
-
-	def __init__(self, id=None, name=None, data=None):
+	def __init__(self, id=None, hostname=None, data=None):
 		if data == None:
-			if(name != None and id == None):
-				id = self.getIdByName()
+			if(hostname != None and id == None):
+				id = self.getIdByName(hostname)
+				return
 			if(id != None and id != False):
-				return self.get(id)
+				self.get(id)
+				return
 		else:
 			if id == None:
-				return self.create(data)
+				self.create(data)
+				return
+
+	def update(self, data):
+		if not self.exists():
+			return False
+		
+		value = dict()
+		for k, v in vars(data).items():
+			if v != None:
+				value[k] = v
+
+		log.write("update host %s (%s)" % (self.getID(), value))
+		update = self.getDB().updateDocByID(self.id, value)
+		self.get(self.getID())
+		return True
+
 
 	def getCredentialID(self):
 		if(hasattr(self, "credential_id")):
@@ -45,22 +54,13 @@ class Host():
 	def getDB(self):
 		return DB(self.col_name)
 
-	def __init__(self, id=None, name=None, data=None):
-		if data == None:
-			if(name != None and id == None):
-				id = self.getIdByName()
-			if(id != None and id != False):
-				return self.get(id)
-		else:
-			if id == None:
-				return self.create(data)
-
 	def toJSON(self):	
 		return json.dumps(self, default=lambda o: o.__dict__, 
 			sort_keys=True, indent=4)
 
-	def getIdByName(self, id: str):
-		doc = self.getDB().findOne({"name": name})
+	def getIdByName(self, hostname: str):
+		print(hostname)
+		doc = self.getDB().findOne({"hostname": hostname})
 		
 		if not doc:
 			return False
@@ -70,7 +70,7 @@ class Host():
 	def create(self, data):
 		log.write("create host: " + str(data), "debug")
 	
-		if(Host(name=data.name).exists()):
+		if(Host(hostname=data.hostname).exists()):
 			log.write("error host already exists: " + str(data), "debug")
 			return False
 
@@ -86,7 +86,9 @@ class Host():
 			return False
 
 	def exists(self):
-		return self.exist
+		if(hasattr(self, "exist")):
+			return self.exist
+		return False
 
 	def getIPAdress(self):
 		if hasattr(self, "ip_address"):
@@ -134,6 +136,13 @@ class Host():
 				ret.append(r)
 			return ret
 
+	def delete(self):
+		if(not self.exists()):
+			return True
+		log.write("delete host " + str(self.getID()), "debug")
+		return self.getDB().deleteById(self.getID())
+
+
 	def getIDByHostname(self, hostname: str):
 		doc = self.getDB().findOne({"hostname": hostname})
 		
@@ -150,8 +159,15 @@ class Host():
 	
 		if(cred):
 			h.setCredential(cred)
-		h.connect()
-		self.host_connection = h
+
+		try:
+			h.connect()
+		except:
+			return False
+		finally:
+			self.host_connection = h
+			return True
 
 	def getConnection(self):
 		return self.host_connection
+
