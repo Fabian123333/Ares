@@ -1,6 +1,12 @@
-from core import log
+import json
 
 from core.db import DB
+from core import log
+
+from modules.job import Job
+from modules.task import Task
+from modules.target import Target
+from modules.host import Host
 
 import os
 import datetime
@@ -8,13 +14,96 @@ import datetime
 class Backup():
 	col_name = "backup"
 	
-	def __init__(self, job, source, target):
-		log.clearBuffer()
-		self.start_time = self.getTimestamp()
-		self.job = job
-		self.target = target
-		self.source = source
+	def __init__(self, id=None, job=None, source=None, target=None):
 		self.filename = ""
+		
+		log.clearBuffer()
+		
+		if(job != None):
+			self.setJob(job)
+		if(source != None):
+			self.setSource(source)
+		if(target != None):
+			self.setTarget(target)
+		
+		self.start_time = self.getTimestamp()
+
+		if(id != None):
+			self.get(id)
+
+	def getID(self):
+		if hasattr(self, "id"):
+			return self.id
+		else:
+			return False
+
+	def getAll(self, filter={}, type="object"):
+		log.write("get all backups", "debug")
+		docs = self.getDB().getCollection(query=filter)
+		
+		if(type == "JSON"):
+			return docs
+		else:
+			ret = []
+			for d in docs:
+				r = Backup(str(d["_id"]))
+				ret.append(r)
+			return ret
+
+	def getTarget(self):
+		if not hasattr(self, "target"):
+			self.target = Target(self.target_id)
+		return self.target
+
+	def getHost(self):
+		if not hasattr(self, "host"):
+			self.host = Target(self.host_id)
+		return self.target
+
+	def get(self, id):
+		log.write("load backup by id: " + id, "debug")
+		ret = self.getDB().get(id)
+		
+		if ret:
+			for k, v in ret.items():
+				setattr(self, k, v)
+			self.id = str(ret["_id"])
+			del(self._id)
+			self.exist = True
+		else: 
+			return False
+
+	def getDB(self):
+		return DB(self.col_name)
+
+	def toJSON(self):	
+		r = self
+		return json.dumps(self, default=lambda o: o.__dict__, 
+			sort_keys=True, indent=4)
+
+	def setJob(self, job):
+		self.job = job
+
+	def getJob(self):
+		if not hasattr(self, "job"):
+			self.job = Job(self.job)
+		return self.job
+
+	def setTarget(self, target):
+		self.target = target
+
+	def getTarget(self):
+		if not hasattr(self, "target"):
+			self.target = Target(self.target_id)
+		return self.target
+	
+	def setSource(self, source):
+		self.source = source
+
+	def getSource(self):
+		if not hasattr(self, "source"):
+			self.source = Host(self.host_id)
+		return self.source
 
 	def getTimestamp(self):
 		now = datetime.datetime.now()
@@ -68,9 +157,11 @@ class Backup():
 						log.write("no matching containers found", "debug")
 					else:
 						for container in c_names:
-							filename = self.getStackBackupPath(stack, container)
+							self.filename = self.getStackBackupPath(stack, container)
 							for id in self.source.getContainersByName(container):
 								self.backupDockerContainer(id, container, stack)
+
+			log.write("finish docker backup", "debug")
 
 			# self.target.openFile(filename)
 		else:
@@ -99,11 +190,11 @@ class Backup():
 	def backupDockerContainer(self, id, container, stack=None):
 		log.write("start backup of container %s to %s" % (id, self.filename))
 
-		if not self.target.fileExists(os.path.dirname(filename)):
-			log.write("backup root does not exist. creating: " + os.path.dirname(filename))
-			self.target.createDirectoryRecursive(os.path.dirname(filename))
-		
-		self.target.openFile(filename)
+		if not self.target.fileExists(os.path.dirname(self.getFilename())):
+			log.write("backup root does not exist. creating: " + os.path.dirname(self.getFilename()))
+			self.target.createDirectoryRecursive(os.path.dirname(self.getFilename()))
+
+		self.target.openFile(self.getFilename())
 		self.source.createArchiveFromContainerId(id)
 					
 		while True:
@@ -116,12 +207,23 @@ class Backup():
 
 		log.write("finish backup of container %s" % (id))
 		
-		log = {"container": container}
+		logs = {"container": container}
 		if not stack == None:
-			log += {"stack": stack}
+			logs["stack"] = stack
 		
-		self.addBackupEntry(log)
+		self.addBackupEntry(logs)
 		return True		
+
+	def exists(self):
+		if hasattr(self, "exist"):
+			return self.exist
+		else:
+			return False
+
+	def getFilename(self):
+		if hasattr(self, "filename"):
+			return self.filename
+		return False
 
 	def addBackupEntry(self, data={}):
 		log.write("mark backup as compeleted", "debug")
@@ -129,13 +231,14 @@ class Backup():
 		self.end_time = self.getTimestamp()
 		
 		doc = {"job_id": str(self.job.getID()), 
-				"file": self.filename, 
+				"filename": self.filename, 
 				"task_id": self.task.getID(), 
 				"host_id": self.source.conf.getID(), 
+				"target_id": self.target.conf.getID(),
 				"type": self.task.getType(),
 				"hostname": self.source.conf.getHostname(), "log": log.getBuffer(),"start_time": self.start_time, "end_time": self.end_time}
 		
-		DB(self.col_name).addDoc(doc)
+		self.getDB().addDoc(doc)
 	
 	def getBackupRootShort(self):
 		return "/backup/" + str(self.job.getID()) + "/" + self.task.getID() + "/"
@@ -148,3 +251,12 @@ class Backup():
 
 	def prepare(self, task):
 		self.task = task
+
+	def delete(self):
+		if(not self.exists()):
+			return True
+		log.write("delete backup " + str(self.getID()), "debug")
+		
+		self.getTarget().prepare()
+		self.getTarget().getConnection().deleteFile(self.getFilename())
+		return self.getDB().deleteById(self.getID())

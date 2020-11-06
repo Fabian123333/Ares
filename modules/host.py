@@ -151,23 +151,29 @@ class Host():
 	
 		return str(doc["_id"])
 
-	def prepare(self):
-		exec("from drivers.host_" + self.getType() + " import HostTemplate", globals())
-		h = HostTemplate(self)
-	
+	def prepareCredential(self):
 		cred = self.getCredential()
 	
 		if(cred):
-			h.setCredential(cred)
+			self.host_connection.setCredential(cred)		
 
-		try:
-			h.connect()
-		except:
+	def prepare(self):
+		exec("from drivers.host_" + self.getType() + " import HostTemplate", globals())
+		self.host_connection = HostTemplate(self)
+		self.prepareCredential()
+	
+		if not self.Connect():
 			return False
-		finally:
-			self.host_connection = h
-			return True
+		
+		return True
 
 	def getConnection(self):
 		return self.host_connection
 
+	def Connect(self):
+		try:
+			self.getConnection().connect()
+		except:
+			return False
+		finally:
+			return True	

@@ -43,13 +43,28 @@ class HostTemplate():
 		self.username = cred.getUsername()
 		self.secret_type = cred.getType()
 
+	def isConnected(self):
+		try:
+			self.client.get_transport()
+		except:
+			return False
+		return True
+
 	def connect(self):
+		log.write("try to connect to host: " + self.host, "notice")
 		if(self.secret_type == "password"):
 			self.client.connect(self.host, username=self.username, password=self.secret)
+			log.write("connected by password", "debug")
+			return True
 		elif(self.secret_type == "certificate"):
 			self.client.connect(self.host, username=self.username, key_filename="/id_rsa")
+			log.write("connected by certificate", "debug")
+			return True
 		else:
 			log.write("secret type not supported by host_linux: " + self.secret_type)
+#		except:
+#			log.write("host not reachable: " + self.host)
+			return False
 			
 	def readBinary(self):
 		data = self.channel.recv(8196)
@@ -77,7 +92,10 @@ class HostTemplate():
 		
 		cmd += p
 		
-		# log.write("execute command: " + cmd, "debug")
+		if not self.isConnected():
+			self.connect()
+		
+		log.write("execute command: " + cmd, "debug")
 		
 		self.transport = self.client.get_transport()
 		self.channel = self.transport.open_session()
@@ -88,7 +106,7 @@ class HostTemplate():
 	def getContainersByName(self, name):
 		cmd = 'docker ps -q --filter "name=' + name + '"'
 		
-		# log.write("execute command: " + cmd, "debug")
+#		log.write("execute command: " + cmd, "debug")
 		stdin, stdout, ssh_stderr = self.client.exec_command(cmd)
 
 		ids = str(stdout.read(), 'ascii').splitlines()
@@ -98,7 +116,7 @@ class HostTemplate():
 	def createArchiveFromContainerId(self, id: str):
 		cmd = 'docker run --rm --volumes-from "' + id + '" debian bash -c \'mount | grep -vE "type (proc|cgroup|(tmp|sys)fs|mqueue|devpts)" | grep -vE "/etc/(resolv.conf|host(name|s))" | grep -v "overlay on /" | awk "{print ($3)}" | xargs tar -Ocz\''
 		
-		# log.write("execute command: " + cmd, "debug")
+#		log.write("execute command: " + cmd, "debug")
 		self.transport = self.client.get_transport()
 		self.channel = self.transport.open_session()
 		self.channel.exec_command(cmd)		
@@ -106,7 +124,7 @@ class HostTemplate():
 	def getContainersByStack(self, name):
 		cmd = "docker stack ps --no-trunc " + name + " |awk '$6 ~ \"Running\" {print $2}' | uniq"
 		
-		# log.write("execute command: " + cmd, "debug")
+#		log.write("execute command: " + cmd, "debug")
 		stdin, stdout, ssh_stderr = self.client.exec_command(cmd)
 		
 		names = str(stdout.read(), 'ascii').splitlines()

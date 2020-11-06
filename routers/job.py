@@ -6,6 +6,7 @@ from modules.job import Job
 from modules.task import Task
 from modules.target import Target
 from modules.host import Host
+from modules.worker import Worker
 from modules.parser import parseJson, parseOutput
 
 router = APIRouter()
@@ -57,6 +58,15 @@ async def apply_for_job(id: str):
 		raise HTTPException(status_code=404, detail="job not found or already claimed")
 	else:
 		return parseJson(ret)
+
+@router.get("/run/{id}", tags=["job"])
+async def run_job(id: str):
+	job = Job(id)
+	if not job.exists():
+		raise HTTPException(status_code=404, detail="job not found or already claimed")
+	worker = Worker()
+	worker.execJob(job)
+	return {"status": "success"}
 
 @router.get("/request/", tags=["job"])
 async def request_job():

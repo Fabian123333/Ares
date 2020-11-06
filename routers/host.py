@@ -68,3 +68,12 @@ async def delete_host(id: str):
 		raise HTTPException(status_code=404, detail="host not found")
 	else:
 		return parseJson(ret)
+
+@router.get("/check/{id}", tags=["host"], response_model=Struct)
+async def check_host_connection(id: str):
+	host = Host(id)
+	
+	if ( host.Connect() == False ):
+		raise HTTPException(status_code=422, detail="host connection not possible")
+	else: 
+		return parseJson(host)

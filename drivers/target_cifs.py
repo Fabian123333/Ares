@@ -51,13 +51,21 @@ class TargetTemplate():
 		else:
 			return False
 	
-	def openFile(self, path):
+	def openFile(self, path, mode="wb"):
 		abs_path = self.path + "/" + path
 		log.write("open target file: "+abs_path, "debug")
 		if(self.fileExists(abs_path)):
 			log.write("cannot create backup, file exists: ".abs_path)
 			return False
-		self.fh = self.fs.open(abs_path, 'wb')
+		self.fh = self.fs.open(abs_path, mode)
+
+	def deleteFile(self, path):
+		abs_path = self.path + "/" + path
+		if(not self.fileExists(path)):
+			return False
+		
+		log.write("delete file: " + path)
+		return self.fs.remove(abs_path)
 
 	def writeFile(self, data):
 		self.fh.write(data)

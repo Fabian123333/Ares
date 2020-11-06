@@ -115,7 +115,7 @@ class Task():
 		if hasattr(self, "data"):
 			if type == None:
 				return self.data
-			if hasattr(self.data, type):
+			if type in self.data:
 				return self.data[type]
 		return False
 	

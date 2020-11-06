@@ -11,7 +11,7 @@ from modules.host import Host
 
 from modules.backup import Backup
 
-class worker():
+class Worker():
 	def __init__(self):
 		log.write("init worker", "debug")
 		self.uuid:str = None
@@ -31,7 +31,7 @@ class worker():
 				for task in job.getTasks():
 					if(job.getType() == "backup"):
 						log.write("start task " + task.getName(), "debug")
-						backup = Backup(job, host.getConnection(), job.getTarget().getConnection())
+						backup = Backup(job=job, source=host.getConnection(), target=job.getTarget().getConnection())
 						backup.run(task)
 			else:
 				log.write("error: prepare host: " + host.getID() , "error")

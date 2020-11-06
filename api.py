@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import Depends, FastAPI, Header, HTTPException
 
-from routers import secret, host, credential, target, job, task
+from routers import secret, host, credential, target, job, task, backup
 app = FastAPI()
 
 # x_token: str = Header(...)
@@ -29,3 +29,6 @@ app.include_router(job.router,
 
 app.include_router(task.router,
 	prefix="/task",tags=["task"],dependencies=[Depends(get_token_header)],responses={404: {"description": "Not found"}})
+
+app.include_router(backup.router,
+	prefix="/backup",tags=["backup"],dependencies=[Depends(get_token_header)],responses={404: {"description": "Not found"}})
