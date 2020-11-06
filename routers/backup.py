@@ -45,6 +45,12 @@ async def delete_backup(id: str):
 	else:
 		return {"status": "success"}
 
+@router.get("/restore/{id}", tags=["backup"])
+async def restore_backup(id: str):
+	backup = Backup(id)
+	ret = backup.restore()
+	return {"status": "success"}
+	
 @router.post("/query", tags=["backup"])
 async def search_for_backups(filter: Struct):
 	ret = Backup().getAll(filter=shrinkJson(filter))

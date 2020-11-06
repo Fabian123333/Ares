@@ -67,6 +67,9 @@ class TargetTemplate():
 		log.write("delete file: " + path)
 		return self.fs.remove(abs_path)
 
+	def readBinary(self):
+		return self.fh.read()
+
 	def writeFile(self, data):
 		self.fh.write(data)
 

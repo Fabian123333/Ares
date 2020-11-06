@@ -66,6 +66,9 @@ class HostTemplate():
 #			log.write("host not reachable: " + self.host)
 			return False
 			
+	def writeBinary(self, data):
+		return self.stdin.write(data)
+			
 	def readBinary(self):
 		data = self.channel.recv(8196)
 		if data:
@@ -100,6 +103,49 @@ class HostTemplate():
 		self.transport = self.client.get_transport()
 		self.channel = self.transport.open_session()
 		self.channel.exec_command(cmd)
+
+	def fileExists(self, path):
+		cmd = 'stat "' + path + '"'
+		stdin, stdout, ssh_stderr = self.client.exec_command(cmd)
+		if ssh_stderr:
+			return False
+		return True
+
+	def createDirectoryRecursive(self, path):
+		cmd = 'mkdir -p "' + path + '"'
+		stdin, stdout, ssh_stderr = self.client.exec_command(cmd)
+
+		return True
+		
+	def closeFile(self):
+		self.stdin.flush()
+		self.stdin.channel.shutdown_write()
+
+	def syncDirectory(self, source=None, target="/", delete=False):
+		if source == None:
+			source = self.tmp_path
+	
+		cmd = "rsync -a " + source + " " + target
+		
+		if delete == True:
+			cmd += " -delete"
+		
+		log.write("execute command: " + cmd)
+		
+		stdin, stdout, ssh_stderr = self.client.exec_command(cmd)
+		return True
+
+	def restoreArchive(self):
+		self.tmp_path = "/tmp/ares-tmp/"
+		
+		cmd = "tar -C " + self.tmp_path + " -xz "
+		
+		if not self.fileExists(self.tmp_path):
+			self.createDirectoryRecursive(self.tmp_path)
+
+		log.write("execute command: " + cmd, "debug")
+
+		self.stdin, self.stdout, self.stderr = self.client.exec_command(cmd)
 
 # Optional Stuff if target supports docker
 

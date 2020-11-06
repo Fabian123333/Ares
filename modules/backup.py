@@ -239,7 +239,25 @@ class Backup():
 				"hostname": self.source.conf.getHostname(), "log": log.getBuffer(),"start_time": self.start_time, "end_time": self.end_time}
 		
 		self.getDB().addDoc(doc)
-	
+
+	def restore(self, overwrite=True, replace=False):
+		log.write("restore backup " + self.getID(), "notice")
+		self.getTarget().prepare()
+		self.getTarget().getConnection().openFile(self.getFilename(), "rb")
+
+		self.getSource().prepare()
+		self.getSource().getConnection().restoreArchive()
+
+		while True:
+			data = self.getTarget().getConnection().readBinary()
+			if not data:
+				break
+			self.getSource().getConnection().writeBinary(data)
+		self.getSource().getConnection().closeFile()
+		self.getSource().getConnection().syncDirectory()
+		
+		log.write("restored backup " + self.getID())
+
 	def getBackupRootShort(self):
 		return "/backup/" + str(self.job.getID()) + "/" + self.task.getID() + "/"
 	
