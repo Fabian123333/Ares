@@ -23,7 +23,7 @@ class Dump():
 			},
 			"mysql" : {
 				"dump": "mysqldump --comments --routines ",
-				"dump_all": 'mkdir /dumps; cd /dumps; mysql -N -e "show databases" | grep -vE "^(mysql|performance_schema|information_schema)$" | while read dbname; do mysqldump --complete-insert --routines --triggers --single-transaction "$dbname" > "$dbname".sql; done',
+				"dump_all": 'mkdir /dumps; cd /dumps; mysql -N -e "show databases" | grep -vE "^(mysql|performance_schema|information_schema)$" | while read dbname; do mysqldump --complete-insert --routines --triggers --single-transaction "$dbname" | gzip > "$dbname".sql.gz; done',
 				"db_format" : "%s"
 			}
 		}		
@@ -250,7 +250,7 @@ class Dump():
 		if(db != None):
 			filename = self.getTimestamp() + "_" + db
 		else:
-			filename = self.getTimestamp()
+			filename = self.getTimestamp() + "_all_databases"
 		
 		if self.task.getType() == "mongodb":
 			filename += ".tar"
