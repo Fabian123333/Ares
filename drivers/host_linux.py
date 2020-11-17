@@ -148,7 +148,7 @@ class HostTemplate():
 
 		return True
 
-	def execCommand(self, cmd):
+	def execCommand(self, cmd, wait=True):
 		if not self.isConnected():
 			self.connect()
 		
@@ -157,6 +157,8 @@ class HostTemplate():
 		self.transport = self.client.get_transport()
 		self.channel = self.transport.open_session()
 		self.channel.exec_command(cmd)		
+		if wait:
+			self.channel.recv_exit_status()
 
 	def closeFile(self):
 		self.stdin.flush()
@@ -203,7 +205,7 @@ class HostTemplate():
 		
 		return ids
 	
-	def createArchiveFromCo1ntainerId(self, id: str):
+	def createArchiveFromContainerId(self, id: str):
 		cmd = 'docker run --rm --volumes-from "' + id + '" debian bash -c \'mount | grep -vE "type (proc|cgroup|(tmp|sys)fs|mqueue|devpts)" | grep -vE "/etc/(resolv.conf|host(name|s))" | grep -v "overlay on /" | awk "{print ($3)}" | xargs tar -Ocz\''
 		
 #		log.write("execute command: " + cmd, "debug")

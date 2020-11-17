@@ -287,15 +287,15 @@ class Dump():
 		self.target.openFile(self.filename)
 		
 		if(container_id != None):
-			self.source.execCommandDocker(container_id, cmd)
+			self.source.execCommandDocker(container_id, cmd, wait=True)
 		else:
-			self.source.execCommand(cmd)
+			self.source.execCommand(cmd, wait=True)
 
 		if(self.task.getType() in ["mongodb", "mysql"]):
 			data = self.source.read()
 		
 			if(container_id != None):
-				self.source.execCommandDocker(container_id, "tar -Oc /dumps 2>/dev/null | cat", wait=True)
+				self.source.execCommandDocker(container_id, "tar -Oc /dumps 2>/dev/null | cat")
 			else:
 				self.source.execCommand("tar -Oc /dumps 2>/dev/null | cat")
 

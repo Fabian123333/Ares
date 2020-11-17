@@ -79,3 +79,6 @@ class DB():
 
 	def findOne(self, pattern):
 		return self.col.find_one(pattern)
+		
+	def find(self, filter):
+		return self.col.find(filter)

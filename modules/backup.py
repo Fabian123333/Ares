@@ -56,8 +56,8 @@ class Backup():
 		return self.target
 
 	def getHost(self):
-		if not hasattr(self, "host"):
-			self.host = Target(self.host_id)
+		if not hasattr(self, "source"):
+			self.source = Target(self.host_id)
 		return self.target
 
 	def get(self, id):
@@ -230,11 +230,11 @@ class Backup():
 		
 		filter = {
 			"task_id": self.getTask().getID(),
-			"host_id": self.getHost().getID(),
-			"target_id": self.getTarget().getID()
+			"host_id": self.getHost().conf.getID(),
+			"target_id": self.getTarget().conf.getID()
 		}
 		
-		ret = self.getDB.find(filter=filter).sort("start_time", 1)
+		ret = self.getDB().find(filter=filter).sort("start_time", 1)
 		
 		log.write("found %i snapshots" % (ret.count()))
 		

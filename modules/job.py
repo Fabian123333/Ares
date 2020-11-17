@@ -29,7 +29,7 @@ class Job():
 		self.hosts = hosts
 	
 	def getMaxSnapshotCount(self):
-		if "snapshots" in self:
+		if hasattr(self, "snapshots"):
 			return self.snapshots
 		return False
 	
