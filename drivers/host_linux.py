@@ -1,10 +1,14 @@
 import os
+import time
 
 from core import log
 import paramiko
 import select
+import logging
 
 class HostTemplate():
+	buff_size = 8192
+
 	def __init__(self, conf):
 		self.conf = conf
 		
@@ -22,6 +26,7 @@ class HostTemplate():
 			return False
 
 		self.client = paramiko.SSHClient()
+		logging.getLogger("paramiko").setLevel(logging.DEBUG) 
 		self.client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
 
 	def setCredential(self, cred):
@@ -65,26 +70,46 @@ class HostTemplate():
 #		except:
 #			log.write("host not reachable: " + self.host)
 			return False
-			
+		
+	def __del__(self):
+		log.write("terminate SSH connection")
+		self.client.close()
+		
 	def writeBinary(self, data):
 		return self.stdin.write(data)
 			
 	def readBinary(self):
-		data = self.channel.recv(8196)
-		if data:
-			return data
-		else:
-			return False
+		while not self.channel.exit_status_ready():
+			if self.channel.recv_ready():
+				r = self.channel.recv(self.buff_size)#
+				return r
+		
+		if self.channel.recv_ready():
+			r = self.channel.recv(self.buff_size)
+			return r
+
+		return False
 
 	def read(self):
-		out = ""
-		while True:
-			data = self.channel.recv(1024)
-			if not data:
-				del self.channel
-				break
-			out += data
-		return out
+		stdout = bytes()
+		stderr = bytes()
+		
+		while not self.channel.exit_status_ready():
+			time.sleep(0.001)
+			if self.channel.recv_ready():
+				stdout += self.channel.recv(self.buff_size)
+			if self.channel.recv_stderr_ready():
+				stderr += self.channel.recv_stderr(self.buff_size)
+			
+		exit_status = self.channel.recv_exit_status()
+		
+		while self.channel.recv_ready():
+			stdout += self.channel.recv(self.buff_size)
+		
+		while self.channel.recv_stderr_ready():
+			stderr += self.channel.recv_stderr(self.buff_size)
+		
+		return stdout, stderr, exit_status
 
 	def createArchiveFromPaths(self, path):
 		cmd = "tar -Ocz "
@@ -102,7 +127,7 @@ class HostTemplate():
 		
 		self.transport = self.client.get_transport()
 		self.channel = self.transport.open_session()
-		self.channel.exec_command(cmd)
+		self.channel.exec_command(cmd + " 2>/dev/null")
 
 	def fileExists(self, path):
 		cmd = 'stat "' + path + '"'
@@ -111,12 +136,28 @@ class HostTemplate():
 			return False
 		return True
 
+	def removeDirectoryRecursive(self, path):
+		cmd = "rm -rf '" + path + "'"
+		self.client.exec_command(cmd)
+
+		return True		
+
 	def createDirectoryRecursive(self, path):
 		cmd = 'mkdir -p "' + path + '"'
 		stdin, stdout, ssh_stderr = self.client.exec_command(cmd)
 
 		return True
+
+	def execCommand(self, cmd):
+		if not self.isConnected():
+			self.connect()
 		
+		log.write("execute command: " + cmd, "debug")
+		
+		self.transport = self.client.get_transport()
+		self.channel = self.transport.open_session()
+		self.channel.exec_command(cmd)		
+
 	def closeFile(self):
 		self.stdin.flush()
 		self.stdin.channel.shutdown_write()
@@ -133,6 +174,9 @@ class HostTemplate():
 		log.write("execute command: " + cmd)
 		
 		stdin, stdout, ssh_stderr = self.client.exec_command(cmd)
+		
+		self.removeDirectoryRecursive(source)
+		
 		return True
 
 	def restoreArchive(self):
@@ -152,20 +196,20 @@ class HostTemplate():
 	def getContainersByName(self, name):
 		cmd = 'docker ps -q --filter "name=' + name + '"'
 		
-#		log.write("execute command: " + cmd, "debug")
+		log.write("execute command: " + cmd, "debug")
 		stdin, stdout, ssh_stderr = self.client.exec_command(cmd)
 
 		ids = str(stdout.read(), 'ascii').splitlines()
 		
 		return ids
 	
-	def createArchiveFromContainerId(self, id: str):
+	def createArchiveFromCo1ntainerId(self, id: str):
 		cmd = 'docker run --rm --volumes-from "' + id + '" debian bash -c \'mount | grep -vE "type (proc|cgroup|(tmp|sys)fs|mqueue|devpts)" | grep -vE "/etc/(resolv.conf|host(name|s))" | grep -v "overlay on /" | awk "{print ($3)}" | xargs tar -Ocz\''
 		
 #		log.write("execute command: " + cmd, "debug")
 		self.transport = self.client.get_transport()
 		self.channel = self.transport.open_session()
-		self.channel.exec_command(cmd)		
+		self.channel.exec_command(cmd)
 	
 	def getContainersByStack(self, name):
 		cmd = "docker stack ps --no-trunc " + name + " |awk '$6 ~ \"Running\" {print $2}' | uniq"
@@ -176,3 +220,18 @@ class HostTemplate():
 		names = str(stdout.read(), 'ascii').splitlines()
 
 		return names
+
+
+	def execCommandDocker(self, container, cmd, wait=True):
+		if not self.isConnected():
+			self.connect()
+		
+		c = "/usr/bin/docker exec -t %s bash -c '%s' | tee -a /tmp/ares.out" % ( container, cmd )
+		log.write("execute command '%s' on container '%s'" % (cmd, container), "debug")
+		
+		self.transport = self.client.get_transport()
+		self.channel = self.transport.open_session()
+		self.channel.exec_command(c)		
+		
+		if wait:
+			self.channel.recv_exit_status()

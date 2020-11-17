@@ -27,13 +27,13 @@ class Struct(BaseModel):
 		}
 
 @router.get("/", tags=["task"])
-async def get_all_tasks(filter: Struct):
-	ret = Task().getAll(filter)
+async def get_all_tasks():
+	ret = Task().getAll()
 		
 	if ( len(ret) == 0 ):
 		raise HTTPException(status_code=404, detail="no tasks found")
 	else:
-		return parseJson(ret1)
+		return parseJson(ret)
 
 @router.post("/query", tags=["task"], response_model=Struct)
 async def search_for_tasks(filter: Struct):

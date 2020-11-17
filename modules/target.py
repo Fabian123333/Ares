@@ -21,7 +21,7 @@ class Target():
 	def __init__(self, id=None, name=None, data=None):
 		if data == None:
 			if(hostname != None and id == None):
-				id = self.getIdByHostname()
+				id = self.getIdByHostname(hostname)
 			if(id != None and id != False):
 				return self.get(id)
 		else:

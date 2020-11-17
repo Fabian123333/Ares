@@ -8,8 +8,8 @@ from modules.job import Job
 from modules.task import Task
 from modules.host import Host
 
-
 from modules.backup import Backup
+from modules.dump import Dump
 
 class Worker():
 	def __init__(self):
@@ -33,6 +33,10 @@ class Worker():
 						log.write("start task " + task.getName(), "debug")
 						backup = Backup(job=job, source=host.getConnection(), target=job.getTarget().getConnection())
 						backup.run(task)
+					if(job.getType() == "dump"):
+						log.write("start dump " + task.getName(), "debug")
+						dump = Dump(job=job, source=host.getConnection(), target=job.getTarget().getConnection())
+						dump.run(task)
 			else:
 				log.write("error: prepare host: " + host.getID() , "error")
 

@@ -10,11 +10,13 @@ class Task():
 	exist = False
 	name: str
 
+	supported_types = ["mongodb", "mysql"]
+
 	def __init__(self, id=None, name=None, data=None):
 
 		if data == None:
 			if(name != None and id == None):
-				id = self.getIdByName()
+				id = self.getIdByName(name)
 			if(id != None and id != False):
 				self.get(id)
 		else:
@@ -28,7 +30,7 @@ class Task():
 		return json.dumps(self, default=lambda o: o.__dict__, 
 			sort_keys=True, indent=4)
 
-	def getIdByName(self, id: str):
+	def getIdByName(self, name: str):
 		doc = self.getDB().findOne({"name": name})
 		
 		if not doc:
@@ -42,6 +44,12 @@ class Task():
 		if(Task(name=data.name).exists()):
 			log.write("error task already exists: " + str(data), "debug")
 			return False
+
+		if(not data["type"] in self.supported_types):
+			log.write("error task type not found: " + str(data["type"]), "debug")
+
+		if("id" in data):
+			del(data["id"])
 
 		log.write("create task: " + str(data))
 	

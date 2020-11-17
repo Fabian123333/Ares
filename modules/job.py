@@ -28,6 +28,11 @@ class Job():
 			hosts.append(Host(id))
 		self.hosts = hosts
 	
+	def getMaxSnapshotCount(self):
+		if "snapshots" in self:
+			return self.snapshots
+		return False
+	
 	def prepareTasks(self):
 		tasks = []
 		for id in self.getTaskIDs():
@@ -46,7 +51,7 @@ class Job():
 
 		if data == None:
 			if(name != None and id == None):
-				id = self.getIdByName()
+				id = self.getIdByName(name)
 			if(id != None and id != False):
 				self.get(id)
 		else:
@@ -100,11 +105,11 @@ class Job():
 	def create(self, data):
 		log.write("create job: " + str(data), "debug")
 	
-		if(Job(data["name"])):
+		if(Job().getIdByName(data.name)):
 			log.write("error job already exists: " + str(data), "debug")
 			return False
 
-		if not target.exists(data.target_id):
+		if not Target(data.target_id).exists():
 			log.write("error target does not exist: " + str(data.target_id), "debug")
 	
 		log.write("create target setup: " + str(data))
@@ -140,7 +145,7 @@ class Job():
 		else: 
 			return False
 
-	def getIdByName(self, id: str):
+	def getIdByName(self, name: str):
 		doc = self.getDB().findOne({"name": name})
 		
 		if not doc:

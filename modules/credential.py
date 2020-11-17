@@ -17,7 +17,7 @@ class Credential():
 	def __init__(self, id=None, name=None, data=None):
 		if data == None:
 			if(name != None and id == None):
-				id = self.getIdByName()
+				id = self.getIdByName(name)
 			if(id != None and id != False):
 				return self.get(id)
 		else:
@@ -31,7 +31,7 @@ class Credential():
 		return json.dumps(self, default=lambda o: o.__dict__, 
 			sort_keys=True, indent=4)
 
-	def getIdByName(self, id: str):
+	def getIdByName(self, name: str):
 		doc = self.getDB().findOne({"name": name})
 		
 		if not doc:

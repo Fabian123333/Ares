@@ -76,14 +76,6 @@ async def request_job():
 	else:
 		return parseJson(jobs)
 
-@router.delete("/{id}", tags=["job"])
-async def delete_job(id: str):
-	ret = Job(id).delete()
-	if ( ret == False ):
-		raise HTTPException(status_code=404, detail="job not found")
-	else:
-		return True
-
 @router.post("/", tags=["job"])
 async def create_job(data: Struct):
 
@@ -103,10 +95,17 @@ async def create_job(data: Struct):
 	if not Target(data.target_id):
 		raise HTTPException(status_code=422, detail="target does not exist")
 
-	j = job.create(data=data)
+	j = Job(data=data)
 
-	if j.getId():
+	if j.getID():
 		return {"state": "true"}
 	else:
 		raise HTTPException(status_code=422, detail="can't create target")
-	
+
+@router.delete("/{id}", tags=["job"])
+async def delete_job(id: str):
+	ret = Job(id).delete()
+	if ( ret == False ):
+		raise HTTPException(status_code=404, detail="job not found")
+	else:
+		return True

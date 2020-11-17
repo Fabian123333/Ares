@@ -119,7 +119,6 @@ class Backup():
 	def getStackBackupPath(self, stack, name):
 		return self.getBackupRootShort() + "/" + stack + "/" + self.start_time + "-" + name + ".tar.gz"
 
-
 	def run(self, task):
 		self.task = task
 	
@@ -161,6 +160,7 @@ class Backup():
 							for id in self.source.getContainersByName(container):
 								self.backupDockerContainer(id, container, stack)
 
+			self.purgeOld()
 			log.write("finish docker backup", "debug")
 
 			# self.target.openFile(filename)
@@ -224,6 +224,32 @@ class Backup():
 		if hasattr(self, "filename"):
 			return self.filename
 		return False
+	
+	def getSnapshots(self):
+		log.write("get snapshots")
+		
+		filter = {
+			"task_id": self.getTask().getID(),
+			"host_id": self.getHost().getID(),
+			"target_id": self.getTarget().getID()
+		}
+		
+		ret = self.getDB.find(filter=filter).sort("start_time", 1)
+		
+		log.write("found %i snapshots" % (ret.count()))
+		
+		return ret
+
+	def deleteOldestSnapshot(self):
+		id = self.getSnapshots()[0]["_id"]
+		return Backup(id).delete()
+
+	def purgeOld(self):
+		log.write("purge old backups", "info")
+		while self.getSnapshots().count() > self.getJob().getMaxSnapshotCount():
+			self.deleteOldestSnapshot()
+
+		return True
 
 	def addBackupEntry(self, data={}):
 		log.write("mark backup as compeleted", "debug")
@@ -241,22 +267,26 @@ class Backup():
 		self.getDB().addDoc(doc)
 
 	def restore(self, overwrite=True, replace=False):
-		log.write("restore backup " + self.getID(), "notice")
-		self.getTarget().prepare()
-		self.getTarget().getConnection().openFile(self.getFilename(), "rb")
-
-		self.getSource().prepare()
-		self.getSource().getConnection().restoreArchive()
-
-		while True:
-			data = self.getTarget().getConnection().readBinary()
-			if not data:
-				break
-			self.getSource().getConnection().writeBinary(data)
-		self.getSource().getConnection().closeFile()
-		self.getSource().getConnection().syncDirectory()
-		
-		log.write("restored backup " + self.getID())
+		if(self.task.getType() == "file"):
+			log.write("restore backup " + self.getID(), "notice")
+			self.getTarget().prepare()
+			self.getTarget().getConnection().openFile(self.getFilename(), "rb")
+	
+			self.getSource().prepare()
+			self.getSource().getConnection().restoreArchive()
+	
+			while True:
+				data = self.getTarget().getConnection().readBinary()
+				if not data:
+					break
+				self.getSource().getConnection().writeBinary(data)
+			self.getSource().getConnection().closeFile()
+			self.getSource().getConnection().syncDirectory()
+			
+			log.write("restored backup " + self.getID())
+		else:
+			log.write("error: restore not supported for this type", "error")
+			return False
 
 	def getBackupRootShort(self):
 		return "/backup/" + str(self.job.getID()) + "/" + self.task.getID() + "/"
@@ -266,6 +296,11 @@ class Backup():
 	
 	def getBackupRoot(self):
 		return "/backup/" + str(self.job.getID()) + "/" + self.task.getID() + "/" + self.source.conf.getHostname() + "/"
+
+	def getTask(self):
+		if hasattr(self, "task"):
+			return self.task
+		return False
 
 	def prepare(self, task):
 		self.task = task
