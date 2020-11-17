@@ -295,7 +295,7 @@ class Dump():
 			data = self.source.read()
 		
 			if(container_id != None):
-				self.source.execCommandDocker(container_id, "tar -Oc /dumps 2>/dev/null | cat", wait=False)
+				self.source.execCommandDocker(container_id, "tar -Oc /dumps 2>/dev/null | cat", wait=True)
 			else:
 				self.source.execCommand("tar -Oc /dumps 2>/dev/null | cat")
 
